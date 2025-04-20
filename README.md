@@ -1,124 +1,193 @@
-# 🌌 Vedic Divisional Charts Calculator
+# 🔯 Vedic Divisional Charts App
 
-A Streamlit web application that calculates Vedic divisional charts (Vargas) based on user-provided birth details using the [Free Astrology API](https://www.freeastrologyapi.com/).
+A Streamlit web application that computes Vedic divisional (Varga) charts D1–D60 (plus extended planetary info) based on your birth details, using the [Free Astrology API](https://www.freeastrologyapi.com/) and geocoding via [Maps.co](https://geocode.maps.co/).
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-deployed-app-url.streamlit.app) <!-- Replace with your deployment URL -->
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-deployed-app-url.streamlit.app)  
+*(Replace with your actual deployment URL)*
 
 ---
 
 ## ✨ Features
 
-*   **Easy Input:** User-friendly form for entering Name, Birth Date, Time, Location (Lat/Long), and Time Zone.
-*   **API Key Management:** Securely input and use your Free Astrology API key (stored temporarily in session state).
-*   **Customizable Chart Selection:** Choose which divisional charts (D1 to D60, plus extended planet info) you want to fetch. All are selected by default.
-*   **API Integration:** Connects directly to the Free Astrology API endpoints.
-*   **JSON Output:** Fetches astrological data in raw JSON format.
-*   **Data Export:** Combines all selected chart data into a single JSON structure and provides a download button for a `.txt` file.
-*   **GitHub Ready:** Includes necessary files (`requirements.txt`, `.gitignore`, `.devcontainer`) for easy cloning, setup, and potential deployment.
+- **User‑Friendly Input**  
+  • Name, Date, Time (24h), Latitude & Longitude (decimal°), Time Zone  
+  • Dropdowns for Ayanamsha (Lahiri/Sayana) and Observation point (topocentric/geocentric)  
+
+- **Geocoding by Place Name**  
+  • Type a city/place and fetch coordinates automatically  
+
+- **Load/Save JSON**  
+  • Paste previously exported birth‑info JSON to reload your data in one click  
+
+- **Selective Fetch**  
+  • All 20+ divisional charts (D1–D60) plus “Planets Extended Info” are pre‑selected  
+  • Uncheck any charts you don’t need  
+
+- **API Integration**  
+  • Uses your Free Astrology API Key (or a default key) to retrieve each chart  
+  • Rate‑limits built‑in with configurable delay  
+
+- **Multi‑Format Output**  
+  • Raw JSON structure with full API responses  
+  • Plain‑text “Readable Summary” combining all chart positions, signs, degrees, retrograde flags, houses & nakshatras  
+  • Download buttons for both `.json` and `.txt`  
+
+- **Clear & Restart**  
+  • One‑click “Clear All & Start Over” preserves only your custom API key  
 
 ---
 
 ## 🛠️ Setup & Installation
 
-**Prerequisites:**
+### Prerequisites
 
-*   Python 3.8+
-*   pip (Python package installer)
-*   A Free Astrology API Key ([Get one here](https://www.freeastrologyapi.com/))
+- Python 3.8+  
+- pip (or conda)  
+- A Free Astrology API Key (register at https://www.freeastrologyapi.com/)
 
-**Steps:**
+### Steps
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/vedic-charts-app.git # Replace with your repo URL
-    cd vedic-charts-app
-    ```
+1. **Clone the repo**  
+   ```
+   git clone https://github.com/your‑username/vedic-charts-app.git
+   cd vedic-charts-app
+   ```
 
-2.  **Create a virtual environment (recommended):**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-    ```
+2. **Create & activate a virtual environment** (highly recommended)  
+   ```
+   python -m venv venv
+   source venv/bin/activate      # macOS/Linux
+   venv\Scripts\activate         # Windows
+   ```
 
-3.  **Install dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+3. **Install dependencies**  
+   ```
+   pip install -r requirements.txt
+   ```
 
-4.  **Get your API Key:**
-    *   Sign up or log in at [Free Astrology API](https://www.freeastrologyapi.com/).
-    *   Find your API key in your account section.
-
-5.  **Run the Streamlit app:**
-    ```bash
-    streamlit run app.py
-    ```
-
-6.  **Open your browser:** Navigate to the local URL provided by Streamlit (usually `http://localhost:8501`).
+4. **Run the app**  
+   ```
+   streamlit run app.py
+   ```
+   Then open http://localhost:8501 in your browser.
 
 ---
 
 ## 🚀 How to Use
 
-1.  **Enter API Key:** Paste your Free Astrology API key into the designated field at the top.
-2.  **Fill Birth Details:** Complete the form with accurate birth information (Name, Date, Time, Latitude, Longitude, Time Zone).
-3.  **Select Charts:** Uncheck any divisional charts you *don't* want to fetch (all are checked by default).
-4.  **Fetch Data:** Click the "✨ Fetch Astrological Data" button.
-5.  **Download Results:** Once processing is complete, click the "📥 Download All Chart Data (.txt)" button to save the combined JSON output.
-6.  **(Optional) View Raw JSON:** Expand the "View Raw JSON Output" section to see the data directly in the app.
+1. **(Optional) Paste your API key**  
+   Expand **Advanced Settings** and paste your Free Astrology API Key.  
+   If left blank, the app will use a public demo key.
+
+2. **(Optional) Load saved birth JSON**  
+   Expand **Load Saved Birth JSON**, paste the JSON export from a previous session, and click **Load JSON**.
+
+3. **(Optional) Geocode a place**  
+   In **Lookup Coordinates by Place**, enter e.g. “New York, USA” and click **Fetch Coordinates** to auto‑fill latitude/longitude.
+
+4. **Fill in Birth Details**  
+   - Name  
+   - Date (calendar picker)  
+   - Time (Hour/Minute/Second)  
+   - Latitude & Longitude (decimal degrees)  
+   - Time Zone (select from friendly labels)  
+   - Ayanamsha & Observation point  
+   Click **Save Details**.
+
+5. **Select Charts**  
+   All divisional charts are checked by default. Un‐check any you don’t need.
+
+6. **Fetch Data**  
+   Click **Fetch Astrological Data**. A progress bar and status messages will show API calls in flight.
+
+7. **Download & View**  
+   - **Download Raw JSON**: full API responses  
+   - **Download Readable TXT**: combined plain‑text summary  
+   - Expand **Readable Summary** or **Raw JSON** to preview in‑app.
+
+8. **Start Over**  
+   Click **Clear All & Start Over** to reset everything (your custom API key is preserved).
 
 ---
 
 ## 📸 Screenshot
 
-*   *(Placeholder: Add a screenshot of the running application here)*
-    ```
-    ![App Screenshot](placeholder.png)
-    ```
+![App Screenshot](placeholder.png)  
+*(Replace `placeholder.png` with an actual screenshot of your app.)*
 
 ---
 
 ## 📝 Example Input / Output
 
-**Example Input:**
+**Example Input**  
+- Name: *Example Person*  
+- Date: 1990‑04‑15  
+- Time: 06:30:00  
+- Lat/Lon: 28.6139, 77.2090 (New Delhi)  
+- Time Zone: UTC+05:30 IST  
+- Ayanamsha: lahiri  
+- Observation: topocentric  
+- Charts: all selected  
 
-*   **Name:** Example Person
-*   **Birth Date:** 2022-08-11
-*   **Birth Time:** 06:00:00
-*   **Latitude:** 17.3833
-*   **Longitude:** 78.4666
-*   **Time Zone:** 5.5
-*   **Charts:** (Default - All selected)
+**Example Readable TXT Output**  
+```
+========================================
+BIRTH DETAILS
+Name: Example Person
+Date: 1990-04-15
+Time: 06:30:00
+Location: 28.6139, 77.2090
+Timezone: UTC+05:30 IST
+Ayanamsha: lahiri
+Observation: topocentric
+========================================
 
-**Example Output (`.txt` file content):**
+-- D1 (Rasi Chart) --
+Ascendant: Aries (1) 14.23°, Direct | H1 | Nak:Ashwini
+Sun: Pisces (12) 29.17°, Direct | H12 | Nak:Revati
+Moon: Libra (7) 03.45°, Direct | H7  | Nak:Chitra
+Mars: Taurus (2) 18.56°, Direct | H2  | Nak:Rohini
+Mercury: Pisces (12) 02.11°, Direct
+Jupiter: Cancer (4) 10.37°, Direct | H4  | Nak:Ashlesha
+Venus: Aries (1) 25.89°, Direct | H1  | Nak:Savitha
+Saturn: Capricorn (10) 05.12°, Direct | H10 | Nak:Uttara
+Rahu: Cancer (4) 20.77°, Direct
+Ketu: Capricorn (10) 20.77°, Direct
 
-```json
+-- Planets Extended Info --
+Sun: Pisces (12) 29.17°, Direct | H12 | Nak:Revati
+…  
+----------------------------------------
+BIRTH JSON (for reload)
 {
-    "D1 (Rasi Chart)": {
-        "statusCode": 200,
-        "input": { ... }, // Echoed input details
-        "output": [ { ... }, { ... } ] // Planet data for Rasi
-    },
-    "Planets Extended Info": {
-        "statusCode": 200,
-        "output": {
-             "Ascendant": { ... }, // Detailed planet info including Nakshatra etc.
-             "Sun": { ... },
-             // ... other planets
-        }
-    },
-    "D2 (Hora Chart)": {
-        "statusCode": 200,
-        "output": {
-            "0": { "name": "Ascendant", ... },
-            "1": { "name": "Sun", ... },
-            // ... other planets for D2
-        }
-    },
-    // ... Data for other selected charts (D3, D4, ..., D60)
-    "D9 (Navamsa Chart)": {
-         "statusCode": 200,
-         "output": { ... } // Planet data for D9
-    },
-     // ... etc.
+  "name": "Example Person",
+  "year": 1990,
+  "month": 4,
+  "date": 15,
+  "hours": 6,
+  "minutes": 30,
+  "seconds": 0,
+  "latitude": 28.6139,
+  "longitude": 77.2090,
+  "timezone": 5.5,
+  "observation_point": "topocentric",
+  "ayanamsha": "lahiri"
 }
+========================================
+```
+
+---
+
+## 📄 License
+
+[MIT License](LICENSE)  
+
+---
+
+## ❤️ Acknowledgments
+
+- [Streamlit](https://streamlit.io/)  
+- [Free Astrology API](https://www.freeastrologyapi.com/)  
+- [Maps.co Geocoding](https://geocode.maps.co/)  
+
+Feel free to ⭐ the repo if you find it useful!
