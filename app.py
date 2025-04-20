@@ -404,12 +404,12 @@ if st.button("Fetch Astrological Data", type="primary"):
 st.markdown("---")
 
 # -------------------------------------------------------------------
-# UI: Display & Download (with green buttons + instructions)
+# UI: Display & Download (with green buttons + JSON/TXT expanders)
 # -------------------------------------------------------------------
 if st.session_state.get("results"):
     st.subheader("Results & Downloads")
 
-    # Inject CSS to make download buttons green
+    # Make the download buttons green
     st.markdown("""
     <style>
       div.stDownloadButton > button {
@@ -420,23 +420,23 @@ if st.session_state.get("results"):
     </style>
     """, unsafe_allow_html=True)
 
-    # Prepare filenames
+    # prepare filenames & data
     ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe = "".join(c for c in st.session_state.birth_info.get("name","chart") if c.isalnum()) or "chart"
     base = f"{safe}_{ts}"
     raw  = json.dumps(st.session_state.results, indent=2)
     txt  = st.session_state.readable
 
-    # Two green download buttons
-    col1, col2 = st.columns(2)
-    with col1:
+    # downloads
+    c1, c2 = st.columns(2)
+    with c1:
         st.download_button(
             "Download Raw JSON",
             data=raw,
             file_name=f"{base}_raw.json",
             mime="application/json"
         )
-    with col2:
+    with c2:
         st.download_button(
             "Download Readable TXT",
             data=txt,
@@ -444,22 +444,29 @@ if st.session_state.get("results"):
             mime="text/plain"
         )
 
-    # Instructions for users
+    # usage instructions
     st.markdown("---")
     st.markdown(
         "**👉 How to use the Raw JSON:**  \n"
-        "Download the raw JSON file and feed it directly into an AI LLM (e.g. ChatGPT, Claude).  \n"
-        "You can prompt:  \n"
-        "`Here is my astrological data in JSON—please analyze it and generate insights.`"
+        "Download this JSON and feed it to your AI LLM (e.g. ChatGPT).  \n"
+        "Prompt example:  \n"
+        "`Here is my Vedic chart data in JSON—please analyze and generate insights.`"
     )
     st.markdown(
         "**⚠️ Disclaimer for the Readable TXT:**  \n"
-        "This file contains your raw birth data and calculation settings."
+        "This file contains your raw birth details and calculation settings."
     )
     st.markdown(
-        "**💡 Tip:**  \n"
-        "Both files can be used as inputs to AI models—just upload or paste their contents and ask any questions you like (predictions, personality traits, transit analysis, etc.)."
+        "**💡 Tip:** You can upload or paste either file into any AI model and ask questions (natal analysis, transits, compatibility, etc.)."
     )
+
+    # expanders for inline viewing
+    with st.expander("Readable Summary"):
+        st.text_area("Summary", txt, height=300)
+
+    with st.expander("Raw JSON"):
+        st.json(st.session_state.results)
+
     st.markdown("---")
 
 # -------------------------------------------------------------------
