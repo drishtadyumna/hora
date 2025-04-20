@@ -119,8 +119,7 @@ Whether you’re building a custom astrology bot, automating report generation, 
 
 ## 📸 Screenshot
 
-![App Screenshot](placeholder.png)  
-*(Replace `placeholder.png` with an actual screenshot of your app.)*
+![App Screenshot](https://i.postimg.cc/mknBLPLv/image-83.png)  
 
 ---
 
