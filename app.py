@@ -6,17 +6,7 @@ import time as pytime
 
 # -------------------------------------------------------------------
 # 🔯 Jyotish Data — Vedic Divisional Charts for AI Workflows
-#
-# Purpose:
-#   Generates structured JSON and plain‑text exports of
-#   Vedic divisional (Varga) charts (D1–D60 + extended planet info)
-#   ready to feed into any AI LLM (ChatGPT, Claude, etc.).
-#
-# Geocoding API (Maps.co):
-#   Key: 680561227fda9856529449uxwa70717 (1 req/sec)
 # -------------------------------------------------------------------
-
-# --- Page config & CSS ---
 st.set_page_config(page_title="Vedic Divisional Charts", layout="centered")
 st.markdown("""
   <style>
@@ -75,39 +65,39 @@ CHART_ENDPOINTS = {
 }
 
 TIMEZONE_OPTIONS = {
-  "UTC−12:00 International Date Line West": -12.0,
-  "UTC−11:00 Midway Island, Samoa":        -11.0,
-  "UTC−10:00 Hawaii":                      -10.0,
-  "UTC−09:30 Marquesas Islands":           -9.5,
-  "UTC−09:00 Alaska":                      -9.0,
-  "UTC−08:00 Pacific Time (US & Canada)":  -8.0,
-  "UTC−07:00 Mountain Time (US & Canada)": -7.0,
-  "UTC−06:00 Central Time (US & Canada)":  -6.0,
-  "UTC−05:00 Eastern Time (US & Canada)":  -5.0,
-  "UTC±00:00 GMT":                          0.0,
-  "UTC+01:00 CET":                          1.0,
-  "UTC+02:00 EET":                          2.0,
-  "UTC+03:00 Moscow, Nairobi":              3.0,
-  "UTC+03:30 Tehran":                       3.5,
-  "UTC+04:00 Abu Dhabi":                    4.0,
-  "UTC+04:30 Kabul":                        4.5,
-  "UTC+05:00 Yekaterinburg":                5.0,
-  "UTC+05:30 IST":                          5.5,
-  "UTC+05:45 Nepal":                        5.75,
-  "UTC+06:00 Dhaka":                        6.0,
-  "UTC+06:30 Yangon":                       6.5,
-  "UTC+07:00 Bangkok":                      7.0,
-  "UTC+08:00 Beijing":                      8.0,
-  "UTC+08:45 Eucla":                        8.75,
-  "UTC+09:00 Tokyo":                        9.0,
-  "UTC+09:30 Adelaide":                     9.5,
-  "UTC+10:00 Sydney":                      10.0,
-  "UTC+10:30 Lord Howe Island":            10.5,
-  "UTC+11:00 Magadan":                     11.0,
-  "UTC+12:00 Auckland":                    12.0,
-  "UTC+12:45 Chatham Islands":             12.75,
-  "UTC+13:00 Tonga":                       13.0,
-  "UTC+14:00 Line Islands":                14.0,
+  "UTC−12:00 Intl Date Line West": -12.0,
+  "UTC−11:00 Midway Island, Samoa": -11.0,
+  "UTC−10:00 Hawaii":              -10.0,
+  "UTC−09:30 Marquesas":           -9.5,
+  "UTC−09:00 Alaska":              -9.0,
+  "UTC−08:00 US Pacific":          -8.0,
+  "UTC−07:00 US Mountain":         -7.0,
+  "UTC−06:00 US Central":          -6.0,
+  "UTC−05:00 US Eastern":          -5.0,
+  "UTC±00:00 GMT":                  0.0,
+  "UTC+01:00 CET":                  1.0,
+  "UTC+02:00 EET":                  2.0,
+  "UTC+03:00 Moscow/Nairobi":       3.0,
+  "UTC+03:30 Tehran":               3.5,
+  "UTC+04:00 Abu Dhabi":            4.0,
+  "UTC+04:30 Kabul":                4.5,
+  "UTC+05:00 Yekaterinburg":        5.0,
+  "UTC+05:30 IST":                  5.5,
+  "UTC+05:45 Nepal":                5.75,
+  "UTC+06:00 Dhaka":                6.0,
+  "UTC+06:30 Yangon":               6.5,
+  "UTC+07:00 Bangkok":              7.0,
+  "UTC+08:00 Beijing":              8.0,
+  "UTC+08:45 Eucla":                8.75,
+  "UTC+09:00 Tokyo":                9.0,
+  "UTC+09:30 Adelaide":             9.5,
+  "UTC+10:00 Sydney":              10.0,
+  "UTC+10:30 Lord Howe Island":    10.5,
+  "UTC+11:00 Magadan":             11.0,
+  "UTC+12:00 Auckland":            12.0,
+  "UTC+12:45 Chathams":            12.75,
+  "UTC+13:00 Tonga":               13.0,
+  "UTC+14:00 Line Islands":        14.0,
 }
 TIMEZONE_LABELS = list(TIMEZONE_OPTIONS.keys())
 
@@ -119,105 +109,100 @@ EXPECTED_BI_KEYS = [
 # -------------------------------------------------------------------
 # Helpers
 # -------------------------------------------------------------------
-
-def fetch_astro_data(api_key, endpoint, payload):
-    if not api_key:
-        return {"statusCode":400, "error":"API key missing."}
+def fetch_astro_data(key, endpoint, payload):
+    if not key: return {"statusCode":400, "error":"API key missing."}
     try:
-        r = requests.post(
-            API_BASE_URL + endpoint,
-            headers={"Content-Type":"application/json","x-api-key":api_key},
-            json=payload, timeout=10
-        )
+        r = requests.post(API_BASE_URL+endpoint,
+                          json=payload,
+                          headers={"Content-Type":"application/json","x-api-key":key},
+                          timeout=10)
         r.raise_for_status()
         return r.json()
     except requests.exceptions.HTTPError:
-        return {"statusCode":r.status_code,"error":f"HTTP {r.status_code}","details":r.text}
+        return {"statusCode":r.status_code,
+                "error":f"HTTP {r.status_code}","details":r.text}
     except Exception as e:
         return {"statusCode":None,"error":"Exception","details":str(e)}
 
 def fetch_coordinates(place):
-    if not place.strip():
-        return None, None, "Empty place name."
+    if not place.strip(): return None,None,"Empty place name."
     try:
-        r = requests.get(
-            GEOCODE_API_URL,
-            params={"q":place,"api_key":GEOCODE_API_KEY},
-            timeout=5
-        )
+        r = requests.get(GEOCODE_API_URL,
+                         params={"q":place,"api_key":GEOCODE_API_KEY},
+                         timeout=5)
         r.raise_for_status()
-        data = r.json()
-        if isinstance(data, list) and data:
-            f = data[0]
-            return float(f["lat"]), float(f["lon"]), f.get("display_name", place)
-        return None, None, f"No results for '{place}'"
+        data=r.json()
+        if isinstance(data,list) and data:
+            f=data[0]
+            return float(f["lat"]),float(f["lon"]),f.get("display_name",place)
+        return None,None,f"No results for '{place}'"
     except Exception as e:
-        return None, None, f"Geocode error: {e}"
+        return None,None,f"Geocode error: {e}"
 
 def flatten_planet_output(raw):
-    name_map = {"1":"Sun","2":"Moon","3":"Mars","4":"Mercury",
-                "5":"Jupiter","6":"Venus","7":"Saturn",
-                "8":"Rahu","9":"Ketu"}
-    planet_dict = {}
+    name_map={"1":"Sun","2":"Moon","3":"Mars","4":"Mercury",
+              "5":"Jupiter","6":"Venus","7":"Saturn",
+              "8":"Rahu","9":"Ketu"}
+    pd={}
     def ingest(d):
         for k,v in d.items():
             if not isinstance(v,dict): continue
-            nm = v.get("name") or name_map.get(str(k)) or ("Ascendant" if k.lower()=="ascendant" else str(k))
-            planet_dict[nm] = v
-    if isinstance(raw,dict):
-        ingest(raw)
+            nm=v.get("name") or name_map.get(str(k)) or \
+               ("Ascendant" if k.lower()=="ascendant" else str(k))
+            pd[nm]=v
+    if isinstance(raw,dict): ingest(raw)
     elif isinstance(raw,list):
         for itm in raw:
-            if isinstance(itm,dict):
-                ingest(itm)
-    return planet_dict
+            if isinstance(itm,dict): ingest(itm)
+    return pd
 
 def generate_readable(bi, results):
-    lines = ["="*40, "BIRTH DETAILS"]
-    lines += [
-        f"Name: {bi.get('name','')}",
-        f"Date: {bi['year']}-{bi['month']:02d}-{bi['date']:02d}",
-        f"Time: {bi['hours']:02d}:{bi['minutes']:02d}:{bi['seconds']:02d}",
-        f"Location: {bi['latitude']:.4f}, {bi['longitude']:.4f}",
+    lines=["="*40, "BIRTH DETAILS"]
+    lines+=[
+      f"Name: {bi.get('name','')}",
+      f"Date: {bi['year']}-{bi['month']:02d}-{bi['date']:02d}",
+      f"Time: {bi['hours']:02d}:{bi['minutes']:02d}:{bi['seconds']:02d}",
+      f"Location: {bi['latitude']:.4f}, {bi['longitude']:.4f}",
     ]
-    tzv   = bi.get("timezone",0)
-    tzlbl = next((lbl for lbl,v in TIMEZONE_OPTIONS.items() if v==tzv), str(tzv))
-    lines += [f"Timezone: {tzlbl}",
-              f"Ayanamsha: {bi.get('ayanamsha','')}",
-              f"Observation: {bi.get('observation_point','')}",
-              "="*40, ""]
-    preferred = ["Ascendant","Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn","Rahu","Ketu"]
-    for chart, raw in results.items():
+    tzv, tzlbl=bi.get("timezone",0), 
+    next((lbl for lbl,v in TIMEZONE_OPTIONS.items() if v==tzv),str(tzv))
+    lines += [
+      f"Timezone: {tzlbl}",
+      f"Ayanamsha: {bi.get('ayanamsha','')}",
+      f"Observation: {bi.get('observation_point','')}",
+      "="*40, ""
+    ]
+    pref=["Ascendant","Sun","Moon","Mars","Mercury","Jupiter","Venus","Saturn","Rahu","Ketu"]
+    for chart,raw in results.items():
         lines.append(f"-- {chart} --")
         if not isinstance(raw,dict) or raw.get("statusCode")!=200 or "output" not in raw:
-            lines.append("ERROR: "+raw.get("error","unknown"))
+            lines.append("ERROR: "+raw.get("error","?"))
             if raw.get("details"): lines.append("DETAILS: "+raw["details"])
-            lines.append("")
-            continue
-        pl = flatten_planet_output(raw["output"])
+            lines.append(""); continue
+        pl=flatten_planet_output(raw["output"])
         if not pl:
-            lines += ["No planet data.",""]; continue
+            lines+=["No planet data.",""]; continue
         seen=set()
-        for p in preferred:
+        for p in pref:
             info=pl.get(p)
             if not info: continue
             seen.add(p)
-            num=info.get("current_sign"); nm=SIGN_NAMES.get(num,f"Sign{num}")
-            deg=info.get("normDegree"); dstr=f"{float(deg):.2f}°" if deg is not None else ""
+            num, nm, deg = info.get("current_sign"), SIGN_NAMES.get(info.get("current_sign")), info.get("normDegree")
+            dstr=f"{float(deg):.2f}°" if deg is not None else ""
             retro="Retrograde" if str(info.get("isRetro",False)).lower() in("true","1") else "Direct"
-            extras=[]          
+            extras=[]
             if hn:=info.get("house_number"):   extras.append(f"H{hn}")
             if nk:=info.get("nakshatra_name"): extras.append(f"Nak:{nk}")
             ex=" | "+" | ".join(extras) if extras else ""
             lines.append(f"{p}: {nm} ({num}) {dstr}, {retro}{ex}")
-        for p, info in pl.items():
+        for p,info in pl.items():
             if p in seen: continue
-            num=info.get("current_sign"); nm=SIGN_NAMES.get(num,f"Sign{num}")
-            deg=info.get("normDegree"); dstr=f"{float(deg):.2f}°" if deg is not None else ""
+            num, nm, deg = info.get("current_sign"), SIGN_NAMES.get(info.get("current_sign")), info.get("normDegree")
+            dstr= f"{float(deg):.2f}°" if deg is not None else ""
             retro="Retrograde" if str(info.get("isRetro",False)).lower() in("true","1") else "Direct"
             lines.append(f"{p}: {nm} ({num}) {dstr}, {retro}")
         lines.append("")
-    lines += ["="*40, "BIRTH JSON (for reload)", json.dumps(bi,indent=2), "="*40]
+    lines+=["="*40,"BIRTH JSON (for reload)",json.dumps(bi,indent=2),"="*40]
     return "\n".join(lines)
 
 # -------------------------------------------------------------------
@@ -258,70 +243,71 @@ def do_geocode():
 # -------------------------------------------------------------------
 # Session State Init
 # -------------------------------------------------------------------
-if "birth_info" not in st.session_state: st.session_state.birth_info={}
-if "results"    not in st.session_state: st.session_state.results=None
-if "readable"   not in st.session_state: st.session_state.readable=None
-if "user_api_key"not in st.session_state: st.session_state.user_api_key=""
+if "birth_info" not in st.session_state:   st.session_state.birth_info={}
+if "results"    not in st.session_state:   st.session_state.results=None
+if "readable"   not in st.session_state:   st.session_state.readable=None
+if "user_api_key"not in st.session_state:  st.session_state.user_api_key=""
 for k in CHART_ENDPOINTS: st.session_state.setdefault(f"cb_{k}",True)
 
 # -------------------------------------------------------------------
-# UI: Load / Geocode / Birth Details
+# UI: Load JSON
 # -------------------------------------------------------------------
 with st.expander("Load Saved Birth JSON"):
-    st.text_area("Paste JSON here",key="json_input",height=150)
-    st.button("Load JSON",on_click=load_from_json)
-
+    st.text_area("Paste JSON here", key="json_input", height=150)
+    st.button("Load JSON", on_click=load_from_json)
 st.markdown("---")
 
-with st.form("geo"):
-    st.markdown("### Lookup Coordinates by Place")
-    st.text_input("Place name:",key="place_input",placeholder="e.g. New York, USA")
-    st.form_submit_button("Fetch Coordinates",on_click=do_geocode)
-
-st.markdown("---")
-
-# ---- Birth Details (auto‑save) ----
+# -------------------------------------------------------------------
+# UI: Birth Details & Settings (with inline geocode)
+# -------------------------------------------------------------------
 st.subheader("Birth Details & Settings")
-bi=st.session_state.birth_info
+bi = st.session_state.birth_info
 
-c1,c2=st.columns(2)
+c1,c2 = st.columns(2)
 with c1:
-    name=st.text_input("Name:",value=bi.get("name",""))
-    default_bd=date(bi.get("year",2000),bi.get("month",1),bi.get("date",1))
-    bd=st.date_input("Birth Date:",value=default_bd,
-                     min_value=date(1800,1,1),max_value=date.today())
+    name = st.text_input("Name", value=bi.get("name",""))
+    default_bd = date(bi.get("year",2000), bi.get("month",1), bi.get("date",1))
+    bd = st.date_input("Birth Date", value=default_bd,
+                       min_value=date(1800,1,1), max_value=date.today())
     st.markdown("**Birth Time (24h)**")
-    hr=st.number_input("Hour",0,23,value=bi.get("hours",12),format="%d")
-    mi=st.number_input("Minute",0,59,value=bi.get("minutes",0),format="%d")
-    se=st.number_input("Second",0,59,value=bi.get("seconds",0),format="%d")
-with c2:
-    st.markdown("**Location (Decimal°)**")
-    lat=st.number_input("Latitude",-90.0,90.0,value=bi.get("latitude",0.0),format="%.4f")
-    lon=st.number_input("Longitude",-180.0,180.0,value=bi.get("longitude",0.0),format="%.4f")
-    st.markdown("**Timezone**")
-    tz_lbl=next((lbl for lbl,v in TIMEZONE_OPTIONS.items()
-                 if v==bi.get("timezone",5.5)),
-                "UTC+05:30 IST")
-    sel_tz=st.selectbox("Select Timezone:",TIMEZONE_LABELS,
-                        index=TIMEZONE_LABELS.index(tz_lbl))
-    tz_value=TIMEZONE_OPTIONS[sel_tz]
-    st.markdown("**Calculation Settings**")
-    obs_opts=["topocentric","geocentric"]
-    obs=st.selectbox("Observation Point",obs_opts,
-                     index=obs_opts.index(bi.get("observation_point","topocentric")))
-    ay_opts=["lahiri","sayana"]
-    ayn=st.selectbox("Ayanamsha",ay_opts,
-                     index=ay_opts.index(bi.get("ayanamsha","lahiri")))
+    hr = st.number_input("Hour",0,23, value=bi.get("hours",12), format="%d")
+    mi = st.number_input("Minute",0,59,value=bi.get("minutes",0), format="%d")
+    se = st.number_input("Second",0,59,value=bi.get("seconds",0), format="%d")
 
-# auto‑save birth_info
-st.session_state.birth_info={
-    "name":name,
-    "year":bd.year,"month":bd.month,"date":bd.day,
-    "hours":hr,"minutes":mi,"seconds":se,
-    "latitude":lat,"longitude":lon,
-    "timezone":tz_value,
-    "observation_point":obs,
-    "ayanamsha":ayn
+with c2:
+    st.markdown("**Lookup Coordinates by Place**")
+    st.text_input("Place name:", key="place_input", placeholder="e.g. New York, USA")
+    if st.button("Fetch Coordinates", key="geo_btn"):
+        do_geocode()
+    st.markdown("**Location (Decimal°)**")
+    lat = st.number_input("Latitude",-90.0,90.0,
+                          value=bi.get("latitude",0.0), format="%.4f")
+    lon = st.number_input("Longitude",-180.0,180.0,
+                          value=bi.get("longitude",0.0), format="%.4f")
+    st.markdown("**Timezone**")
+    tz_lbl = next((lbl for lbl,v in TIMEZONE_OPTIONS.items()
+                   if v==bi.get("timezone",5.5)), "UTC+05:30 IST")
+    sel_tz = st.selectbox("Select Timezone:", TIMEZONE_LABELS,
+                          index=TIMEZONE_LABELS.index(tz_lbl))
+    tz_value = TIMEZONE_OPTIONS[sel_tz]
+
+    st.markdown("**Calculation Settings**")
+    obs_opts = ["topocentric","geocentric"]
+    obs = st.selectbox("Observation Point", obs_opts,
+                       index=obs_opts.index(bi.get("observation_point","topocentric")))
+    ay_opts = ["lahiri","sayana"]
+    ayn = st.selectbox("Ayanamsha", ay_opts,
+                       index=ay_opts.index(bi.get("ayanamsha","lahiri")))
+
+# auto‑save
+st.session_state.birth_info = {
+    "name": name,
+    "year": bd.year, "month": bd.month, "date": bd.day,
+    "hours": hr, "minutes": mi, "seconds": se,
+    "latitude": lat, "longitude": lon,
+    "timezone": tz_value,
+    "observation_point": obs,
+    "ayanamsha": ayn
 }
 
 st.markdown("---")
@@ -330,23 +316,23 @@ st.markdown("---")
 # UI: Chart Selection & Fetch
 # -------------------------------------------------------------------
 st.subheader("Select Charts to Fetch")
-c1,c2=st.columns(2)
+c1,c2 = st.columns(2)
 if c1.button("Select All"):
     for k in CHART_ENDPOINTS: st.session_state[f"cb_{k}"]=True
 if c2.button("Unselect All"):
     for k in CHART_ENDPOINTS: st.session_state[f"cb_{k}"]=False
 
-cols=st.columns(3)
-sel={}
-opts=list(CHART_ENDPOINTS.keys())
-per=(len(opts)+2)//3
+cols = st.columns(3)
+sel = {}
+opts = list(CHART_ENDPOINTS.keys())
+per = (len(opts)+2)//3
 for i,opt in enumerate(opts):
-    sel[opt]=cols[i//per].checkbox(opt,
-        value=st.session_state[f"cb_{opt}"],key=f"cb_{opt}")
+    sel[opt] = cols[i//per].checkbox(opt,
+        value=st.session_state[f"cb_{opt}"], key=f"cb_{opt}")
 
-if st.button("Fetch Astrological Data",type="primary"):
-    bi=st.session_state.birth_info or {}
-    missing=[k for k in EXPECTED_BI_KEYS if k not in bi]
+if st.button("Fetch Astrological Data", type="primary"):
+    bi = st.session_state.birth_info or {}
+    missing = [k for k in EXPECTED_BI_KEYS if k not in bi]
     if missing:
         st.error("Incomplete birth details. Missing: "+", ".join(missing))
     else:
@@ -356,27 +342,28 @@ if st.button("Fetch Astrological Data",type="primary"):
         else:
             st.session_state.results=None
             st.session_state.readable=None
-            api_key=st.session_state.user_api_key.strip() or DEFAULT_ASTRO_API_KEY
-            payload={
-                "year":bi["year"],"month":bi["month"],"date":bi["date"],
-                "hours":bi["hours"],"minutes":bi["minutes"],"seconds":bi["seconds"],
-                "latitude":bi["latitude"],"longitude":bi["longitude"],
+            api_key = st.session_state.user_api_key.strip() or DEFAULT_ASTRO_API_KEY
+            payload = {
+                "year":bi["year"], "month":bi["month"], "date":bi["date"],
+                "hours":bi["hours"], "minutes":bi["minutes"], "seconds":bi["seconds"],
+                "latitude":bi["latitude"], "longitude":bi["longitude"],
                 "timezone":bi["timezone"],
-                "settings":{"observation_point":bi["observation_point"],
-                            "ayanamsha":bi["ayanamsha"],"language":"en"}
+                "settings":{
+                  "observation_point":bi["observation_point"],
+                  "ayanamsha":bi["ayanamsha"], "language":"en"
+                }
             }
             results={}
             prog=st.progress(0)
-            for idx,chart in enumerate(chosen):
+            for idx, chart in enumerate(chosen):
                 st.write(f"Fetching {chart} ({idx+1}/{len(chosen)})…")
-                res=fetch_astro_data(api_key,CHART_ENDPOINTS[chart],payload)
+                res=fetch_astro_data(api_key, CHART_ENDPOINTS[chart], payload)
                 results[chart]=res
                 prog.progress((idx+1)/len(chosen))
-                if idx<len(chosen)-1:
-                    pytime.sleep(API_CALL_DELAY)
+                if idx < len(chosen)-1: pytime.sleep(API_CALL_DELAY)
             st.success("Fetch complete.")
-            st.session_state.results=results
-            st.session_state.readable=generate_readable(bi,results)
+            st.session_state.results = results
+            st.session_state.readable=generate_readable(bi, results)
 
 st.markdown("---")
 
@@ -393,12 +380,12 @@ if st.session_state.get("results"):
 
     d1,d2=st.columns(2)
     with d1:
-        st.download_button("Download Raw JSON",raw,file_name=f"{base}_raw.json")
+        st.download_button("Download Raw JSON", raw, file_name=f"{base}_raw.json")
     with d2:
-        st.download_button("Download Readable TXT",txt,file_name=f"{base}_readable.txt")
+        st.download_button("Download Readable TXT", txt, file_name=f"{base}_readable.txt")
 
     with st.expander("Readable Summary"):
-        st.text_area("Summary",txt,height=400)
+        st.text_area("Summary", txt, height=400)
     with st.expander("Raw JSON"):
         st.json(st.session_state.results)
 
@@ -408,7 +395,7 @@ st.markdown("---")
 # UI: Advanced & Clear
 # -------------------------------------------------------------------
 with st.expander("Advanced Settings"):
-    st.text_input("Custom API Key (optional)",key="user_api_key",type="password")
+    st.text_input("Custom API Key (optional)", key="user_api_key", type="password")
 
 if st.button("Clear All & Start Over"):
     preserved=st.session_state.get("user_api_key","")
