@@ -380,28 +380,63 @@ if st.button("Fetch Astrological Data", type="primary"):
 st.markdown("---")
 
 # -------------------------------------------------------------------
-# UI: Display & Download
+# UI: Display & Download (with green buttons + instructions)
 # -------------------------------------------------------------------
 if st.session_state.get("results"):
     st.subheader("Results & Downloads")
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # Inject CSS to make download buttons green
+    st.markdown("""
+    <style>
+      div.stDownloadButton > button {
+        background-color: #28a745 !important;
+        color: white !important;
+        border: none;
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Prepare filenames
+    ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
     safe = "".join(c for c in st.session_state.birth_info.get("name","chart") if c.isalnum()) or "chart"
     base = f"{safe}_{ts}"
-    raw = json.dumps(st.session_state.results, indent=2)
-    txt = st.session_state.readable
+    raw  = json.dumps(st.session_state.results, indent=2)
+    txt  = st.session_state.readable
 
-    d1, d2 = st.columns(2)
-    with d1:
-        st.download_button("Download Raw JSON", raw, file_name=f"{base}_raw.json")
-    with d2:
-        st.download_button("Download Readable TXT", txt, file_name=f"{base}_readable.txt")
+    # Two green download buttons
+    col1, col2 = st.columns(2)
+    with col1:
+        st.download_button(
+            "Download Raw JSON",
+            data=raw,
+            file_name=f"{base}_raw.json",
+            mime="application/json"
+        )
+    with col2:
+        st.download_button(
+            "Download Readable TXT",
+            data=txt,
+            file_name=f"{base}_readable.txt",
+            mime="text/plain"
+        )
 
-    with st.expander("Readable Summary"):
-        st.text_area("Summary", txt, height=400)
-    with st.expander("Raw JSON"):
-        st.json(st.session_state.results)
-
-st.markdown("---")
+    # Instructions for users
+    st.markdown("---")
+    st.markdown(
+        "**👉 How to use the Raw JSON:**  \n"
+        "Download the raw JSON file and feed it directly into an AI LLM (e.g. ChatGPT, Claude).  \n"
+        "You can prompt:  \n"
+        "`Here is my astrological data in JSON—please analyze it and generate insights.`"
+    )
+    st.markdown(
+        "**⚠️ Disclaimer for the Readable TXT:**  \n"
+        "This file contains your raw birth data and calculation settings."
+    )
+    st.markdown(
+        "**💡 Tip:**  \n"
+        "Both files can be used as inputs to AI models—just upload or paste their contents and ask any questions you like (predictions, personality traits, transit analysis, etc.)."
+    )
+    st.markdown("---")
 
 # -------------------------------------------------------------------
 # UI: Advanced Settings & Clear
