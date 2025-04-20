@@ -22,7 +22,7 @@ st.markdown("""
   </style>
 """, unsafe_allow_html=True)
 
-st.markdown("## 🔯 Jyotish Data")
+st.markdown("## 🔯 Jyotish Data - For AI analysis")
 st.markdown("---")
 
 # --- Constants ---
