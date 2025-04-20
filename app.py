@@ -14,27 +14,9 @@ import time as pytime
 #
 # Geocoding API (Maps.co):
 #   API Key: 680561227fda9856529449uxwa70717
-#
-#   Forward Geocode (address → coords):
-#     https://geocode.maps.co/search?q={address}&api_key=680561227fda9856529449uxwa70717
-#
-#     OR detailed:
-#     https://geocode.maps.co/search?
-#             street=555+5th+Ave&
-#             city=New+York&
-#             state=NY&
-#             postalcode=10017&
-#             country=US&
-#             api_key=680561227fda9856529449uxwa70717
-#
-#   Reverse Geocode (coords → address):
-#     https://geocode.maps.co/reverse?lat={latitude}&lon={longitude}&api_key=680561227fda9856529449uxwa70717
-#
-#   By default returns JSON. Append &format={xml,json,jsonv2,geojson,geocodejson}
-#   Free accounts limited to 1 request/sec.
 # -------------------------------------------------------------------
 
-# --- Page config & CSS ---
+# --- Page config & global CSS ---
 st.set_page_config(page_title="Vedic Divisional Charts", layout="centered")
 st.markdown("""
     <style>
@@ -50,7 +32,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- Header ---
+# --- Header with Shatkona Emoji 🔯 ---
 st.markdown("## 🔯 Jyotish Data")
 st.markdown("---")
 
@@ -158,9 +140,8 @@ def fetch_astro_data(api_key: str, endpoint: str, payload: dict) -> dict:
     except Exception as e:
         return {"statusCode": None, "error":"Exception", "details": str(e)}
 
-
 def fetch_coordinates(place: str):
-    """Forward‐geocode a place name into (lat, lon, display_name)."""
+    """Forward‑geocode a place name into (lat, lon, display_name)."""
     if not place.strip():
         return None, None, "Empty place name."
     try:
@@ -177,7 +158,6 @@ def fetch_coordinates(place: str):
         return None, None, f"No results for '{place}'"
     except Exception as e:
         return None, None, f"Geocode error: {e}"
-
 
 def flatten_planet_output(raw):
     name_map = {
@@ -200,7 +180,6 @@ def flatten_planet_output(raw):
                 ingest(item)
     return planet_dict
 
-
 def generate_readable(bi, results):
     lines = []
     lines.append("="*40)
@@ -221,16 +200,13 @@ def generate_readable(bi, results):
         lines.append(f"-- {chart} --")
         if not isinstance(raw, dict) or raw.get("statusCode")!=200 or "output" not in raw:
             lines.append("ERROR: " + raw.get("error","unknown"))
-            if raw.get("details"):
-                lines.append("DETAILS: " + raw["details"])
+            if raw.get("details"): lines.append("DETAILS: " + raw["details"])
             lines.append("")
             continue
 
         pl = flatten_planet_output(raw["output"])
         if not pl:
-            lines.append("No planet data.")
-            lines.append("")
-            continue
+            lines.append("No planet data."); lines.append(""); continue
 
         seen = set()
         for p in preferred:
@@ -247,8 +223,7 @@ def generate_readable(bi, results):
             if nk:=info.get("nakshatra_name"): extras.append(f"Nak:{nk}")
             ex = " | " + " | ".join(extras) if extras else ""
             lines.append(f"{p}: {nm} ({num}) {dstr}, {retro}{ex}")
-
-        for p,info in pl.items():
+        for p, info in pl.items():
             if p in seen: continue
             num   = info.get("current_sign")
             nm    = SIGN_NAMES.get(num, f"Sign{num}")
@@ -275,8 +250,7 @@ def load_from_json():
         data = json.loads(raw)
         missing = [k for k in EXPECTED_BI_KEYS if k not in data]
         if missing:
-            st.error("Missing keys: " + ", ".join(missing))
-            return
+            st.error("Missing keys: " + ", ".join(missing)); return
         bi = {}
         for k in EXPECTED_BI_KEYS:
             if k in ("year","month","date","hours","minutes","seconds"):
@@ -306,7 +280,7 @@ def do_geocode():
 
 
 # -------------------------------------------------------------------
-# Session State Initialization
+# Session State Init
 # -------------------------------------------------------------------
 
 if "birth_info" not in st.session_state:
@@ -338,8 +312,7 @@ st.markdown("---")
 
 with st.form("geo"):
     st.markdown("### Lookup Coordinates by Place")
-    st.text_input("Place name:", key="place_input",
-                  placeholder="e.g. New York, USA")
+    st.text_input("Place name:", key="place_input", placeholder="e.g. London, UK")
     st.form_submit_button("Fetch Coordinates", on_click=do_geocode)
 
 st.markdown("---")
@@ -355,40 +328,20 @@ with st.form("birth"):
     c1, c2 = st.columns(2)
     with c1:
         name = st.text_input("Name", value=bi.get("name",""))
-        default_date = date(bi.get("year",2000),
-                            bi.get("month",1),
-                            bi.get("date",1))
-        bd = st.date_input("Date", value=default_date,
-                           min_value=date(1800,1,1),
-                           max_value=date.today())
+        default_date = date(bi.get("year",2000), bi.get("month",1), bi.get("date",1))
+        bd = st.date_input("Date", value=default_date, min_value=date(1800,1,1), max_value=date.today())
         st.markdown("#### Time (24h)")
-        hr = st.number_input("Hour",0,23,
-                             value=bi.get("hours",12), format="%d")
-        mi = st.number_input("Minute",0,59,
-                             value=bi.get("minutes",0), format="%d")
-        se = st.number_input("Second",0,59,
-                             value=bi.get("seconds",0), format="%d")
+        hr = st.number_input("Hour",0,23, value=bi.get("hours",12), format="%d")
+        mi = st.number_input("Minute",0,59, value=bi.get("minutes",0), format="%d")
+        se = st.number_input("Second",0,59, value=bi.get("seconds",0), format="%d")
     with c2:
         st.markdown("#### Location")
-        lat = st.number_input("Latitude",-90.0,90.0,
-                              value=bi.get("latitude",0.0),
-                              format="%.4f")
-        lon = st.number_input("Longitude",-180.0,180.0,
-                              value=bi.get("longitude",0.0),
-                              format="%.4f")
-        tz_lbl = next((lbl for lbl,v in TIMEZONE_OPTIONS.items()
-                       if v==bi.get("timezone",5.5)),
-                      "UTC+05:30 IST")
-        tz = st.selectbox("Timezone", TIMEZONE_LABELS,
-                          index=TIMEZONE_LABELS.index(tz_lbl))
-        obs = st.selectbox("Observation",
-                           ["topocentric","geocentric"],
-                           index=["topocentric","geocentric"]
-                                 .index(bi.get("observation_point","topocentric")))
-        ayn = st.selectbox("Ayanamsha",
-                           ["lahiri","sayana"],
-                           index=["lahiri","sayana"]
-                                 .index(bi.get("ayanamsha","lahiri")))
+        lat = st.number_input("Latitude",-90.0,90.0, value=bi.get("latitude",0.0), format="%.4f")
+        lon = st.number_input("Longitude",-180.0,180.0, value=bi.get("longitude",0.0), format="%.4f")
+        tz_lbl = next((lbl for lbl,v in TIMEZONE_OPTIONS.items() if v==bi.get("timezone",5.5)), "UTC+05:30 IST")
+        tz = st.selectbox("Timezone", TIMEZONE_LABELS, index=TIMEZONE_LABELS.index(tz_lbl))
+        obs = st.selectbox("Observation", ["topocentric","geocentric"], index=["topocentric","geocentric"].index(bi.get("observation_point","topocentric")))
+        ayn = st.selectbox("Ayanamsha", ["lahiri","sayana"], index=["lahiri","sayana"].index(bi.get("ayanamsha","lahiri")))
     if st.form_submit_button("Save Details"):
         st.session_state.birth_info = {
             "name": name,
@@ -405,7 +358,7 @@ st.markdown("---")
 
 
 # -------------------------------------------------------------------
-# UI: Select Charts
+# UI: Chart Selection
 # -------------------------------------------------------------------
 
 st.subheader("Select Charts to Fetch")
@@ -422,8 +375,7 @@ sel = {}
 opts = list(CHART_ENDPOINTS.keys())
 per = (len(opts)+2)//3
 for i,opt in enumerate(opts):
-    sel[opt] = cols[i//per].checkbox(opt,
-        value=st.session_state[f"cb_{opt}"], key=f"cb_{opt}")
+    sel[opt] = cols[i//per].checkbox(opt, value=st.session_state[f"cb_{opt}"], key=f"cb_{opt}")
 
 st.markdown("---")
 
@@ -460,7 +412,7 @@ if st.button("Fetch Astrological Data", type="primary"):
 
             results = {}
             prog = st.progress(0)
-            for idx,chart in enumerate(chosen):
+            for idx, chart in enumerate(chosen):
                 st.write(f"Fetching {chart} ({idx+1}/{len(chosen)})…")
                 res = fetch_astro_data(api_key, CHART_ENDPOINTS[chart], payload)
                 results[chart] = res
@@ -479,19 +431,16 @@ if st.button("Fetch Astrological Data", type="primary"):
 if st.session_state.get("results"):
     st.subheader("Results & Downloads")
     now  = datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe = "".join(c for c in st.session_state.birth_info.get("name","chart")
-                   if c.isalnum()) or "chart"
+    safe = "".join(c for c in st.session_state.birth_info.get("name","chart") if c.isalnum()) or "chart"
     base = f"{safe}_{now}"
     raw  = json.dumps(st.session_state.results, indent=2)
     txt  = st.session_state.readable
 
     d1, d2 = st.columns(2)
     with d1:
-        st.download_button("Download Raw JSON", raw,
-                           file_name=f"{base}_raw.json")
+        st.download_button("Download Raw JSON", raw, file_name=f"{base}_raw.json")
     with d2:
-        st.download_button("Download Readable TXT", txt,
-                           file_name=f"{base}_readable.txt")
+        st.download_button("Download Readable TXT", txt, file_name=f"{base}_readable.txt")
 
     with st.expander("Readable Summary"):
         st.text_area("Summary", txt, height=400)
@@ -501,19 +450,18 @@ if st.session_state.get("results"):
 st.markdown("---")
 
 # -------------------------------------------------------------------
-# UI: Advanced & Clear
+# UI: Advanced Settings & Clear
 # -------------------------------------------------------------------
 
 with st.expander("Advanced Settings"):
-    st.text_input("Custom API Key (optional)",
-                  key="user_api_key", type="password")
+    st.text_input("Custom API Key (optional)", key="user_api_key", type="password")
 
 if st.button("Clear All & Start Over"):
     preserved = st.session_state.get("user_api_key", "")
     for k in list(st.session_state.keys()):
         del st.session_state[k]
     st.session_state.user_api_key = preserved
-    st.experimental_memo.clear()  # ensure no stale caches
+    # No experimental rerun or memo calls needed
 
 st.markdown("---")
 st.caption("Built with Streamlit | Free Astrology API | Geocoding by Maps.co")
