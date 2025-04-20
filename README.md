@@ -2,6 +2,14 @@
 
 A Streamlit web application that computes Vedic divisional (Varga) charts D1–D60 (plus extended planetary info) based on your birth details, using the [Free Astrology API](https://www.freeastrologyapi.com/) and geocoding via [Maps.co](https://geocode.maps.co/).
 
+This Streamlit app is designed specifically for AI‑powered astrology workflows.  Instead of static chart images or tables, it produces clean, machine‑readable JSON and human‑friendly TXT summaries of your full suite of Vedic divisional (Varga) charts (D1 through D60, plus extended planetary details).
+
+By entering your birth details—name, date/time, geographic coordinates, time zone, ayanamsha and observation point—you generate a downloadable data file containing every planet’s sign, degree, house, nakshatra, retrograde status and more.  You can safely store these exports and feed them into your favorite large language models (ChatGPT, Claude, Llama, etc.) for any kind of automated insight, interpretation, or further NLP‑driven exploration.
+
+Whether you’re building a custom astrology bot, automating report generation, experimenting with AI‑driven synastry or predictive models, or simply keeping a digital archive of your Vedic charts, this app gives you the structured data you need—fast, free, and flexible.
+
+
+
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://jyotish.streamlit.app/)  
 
 ---
