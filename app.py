@@ -21,13 +21,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Header with Shatkona Emoji 🔯 ---
-st.markdown("## 🔯 Vedic Chart App — Premium Astrology Insights")
+st.markdown("## 🔯 Jyotish Data")
 st.markdown("---")
 
 # --- Constants ---
 API_BASE_URL          = "https://json.freeastrologyapi.com/"
 GEOCODE_API_URL       = "https://geocode.maps.co/search"
-DEFAULT_ASTRO_API_KEY = "5EIAafVray9EwCr2Lz1kB1ofbkUmzoy76kbGnRav"
+DEFAULT_ASTRO_API_KEY = "DLqLK8YIvw8evOKHCExxB5UD146lcAsa69vd6Oqy"
 API_CALL_DELAY        = 1.0
 
 SIGN_NAMES = {
