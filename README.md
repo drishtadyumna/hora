@@ -1,4 +1,4 @@
-# 🔯 Vedic Divisional Charts App
+# 🔯 Vedic Divisional Charts App - For Ai Analysis
 
 A Streamlit web application that computes Vedic divisional (Varga) charts D1–D60 (plus extended planetary info) based on your birth details, using the [Free Astrology API](https://www.freeastrologyapi.com/) and geocoding via [Maps.co](https://geocode.maps.co/).
 
