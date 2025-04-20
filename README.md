@@ -57,7 +57,7 @@ Whether you’re building a custom astrology bot, automating report generation, 
 1. **Clone the repo**  
    ```
    git clone https://github.com/drishtadyumna/hora.git
-   cd vedic-charts-app
+   cd hora
    ```
 
 2. **Create & activate a virtual environment** (highly recommended)  
