@@ -274,45 +274,49 @@ if "obs_input" not in st.session_state:
 if "ayn_input" not in st.session_state:
     st.session_state.ayn_input = st.session_state.birth_info.get("ayanamsha",    "lahiri")
 
-# --- UI: Birth Details & Settings ---
+# --- UI: Birth Details & Settings (robust date input) ---
 st.subheader("Birth Details & Settings")
 bi = st.session_state.birth_info
 
 col1, col2 = st.columns(2)
-
 with col1:
-    # Name & Date
-    name = st.text_input("Name", value=bi.get("name", ""))
-    default_bd = date(bi.get("year", 2000),
-                      bi.get("month", 1),
-                      bi.get("date", 1))
-    bd = st.date_input("Birth Date", value=default_bd,
-                       min_value=date(1800,1,1),
-                       max_value=date.today())
-    # Time
+    name = st.text_input("Name:", value=bi.get("name", ""))
+
+    # Safely construct default date
+    try:
+        default_bd = date(
+            int(bi.get("year", 2000)),
+            int(bi.get("month", 1)),
+            int(bi.get("date", 1))
+        )
+    except Exception:
+        default_bd = date.today()
+    # Never allow default beyond today
+    default_bd = min(default_bd, date.today())
+
+    bd = st.date_input(
+        "Birth Date:",
+        value=default_bd,
+        min_value=date(1800, 1, 1),
+        max_value=date.today()
+    )
+
     st.markdown("**Birth Time (24h)**")
     t1, t2, t3 = st.columns(3)
-    hr = t1.number_input("Hour",   0, 23, value=bi.get("hours",   12), format="%d")
-    mi = t2.number_input("Minute", 0, 59, value=bi.get("minutes", 0),  format="%d")
-    se = t3.number_input("Second", 0, 59, value=bi.get("seconds", 0),  format="%d")
+    hr = t1.number_input("Hour",   0, 23, value=bi.get("hours", 12), format="%d")
+    mi = t2.number_input("Minute", 0, 59, value=bi.get("minutes", 0), format="%d")
+    se = t3.number_input("Second", 0, 59, value=bi.get("seconds", 0), format="%d")
 
 with col2:
-    # Geocode lookup
     st.markdown("**Lookup Coordinates by Place**")
     st.text_input("Place name:", key="place_input", placeholder="e.g. New York, USA")
     if st.button("Fetch Coordinates", key="geo_btn"):
         do_geocode()
 
-    # Lat/Lon
     st.markdown("**Location (Decimal°)**")
-    lat = st.number_input("Latitude",  -90.0, 90.0,
-                          value=bi.get("latitude",  0.0),
-                          format="%.4f")
-    lon = st.number_input("Longitude", -180.0,180.0,
-                          value=bi.get("longitude", 0.0),
-                          format="%.4f")
+    lat = st.number_input("Latitude:",  -90.0,  90.0,  value=bi.get("latitude",  0.0), format="%.4f")
+    lon = st.number_input("Longitude:", -180.0, 180.0, value=bi.get("longitude", 0.0), format="%.4f")
 
-    # Timezone
     st.markdown("**Timezone**")
     tz_lbl = next((lbl for lbl,v in TIMEZONE_OPTIONS.items()
                    if v == bi.get("timezone", 5.5)),
@@ -321,28 +325,25 @@ with col2:
                           index=TIMEZONE_LABELS.index(tz_lbl))
     tz_value = TIMEZONE_OPTIONS[sel_tz]
 
-# --- Advanced Calculation Settings (collapsed) ---
+# Advanced Calculation Settings (hidden)
 with st.expander("Advanced Calculation Settings"):
-    obs_opts = ["topocentric","geocentric"]
-    obs = st.selectbox("Observation Point", obs_opts,
-                       key="obs_input")
-    ay_opts = ["lahiri","sayana"]
-    ayn = st.selectbox("Ayanamsha",       ay_opts,
-                       key="ayn_input")
+    obs_opts = ["topocentric", "geocentric"]
+    obs = st.selectbox("Observation Point", obs_opts, key="obs_input")
+    ay_opts = ["lahiri", "sayana"]
+    ayn = st.selectbox("Ayanamsha", ay_opts, key="ayn_input")
 
-# --- Auto‑save into session_state.birth_info ---
+# Auto‑save everything
 st.session_state.birth_info = {
     "name": name,
-    "year":  bd.year,   "month": bd.month,   "date": bd.day,
-    "hours": hr,        "minutes": mi,       "seconds": se,
-    "latitude":  lat,   "longitude": lon,
+    "year": bd.year, "month": bd.month, "date": bd.day,
+    "hours": hr, "minutes": mi, "seconds": se,
+    "latitude":  lat, "longitude": lon,
     "timezone":  tz_value,
     "observation_point": st.session_state.obs_input,
     "ayanamsha":        st.session_state.ayn_input
 }
 
 st.markdown("---")
-
 # -------------------------------------------------------------------
 # UI: Chart Selection & Fetch
 # -------------------------------------------------------------------
