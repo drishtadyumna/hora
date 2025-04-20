@@ -405,12 +405,12 @@ if st.button("Fetch Astrological Data", type="primary"):
 st.markdown("---")
 
 # -------------------------------------------------------------------
-# UI: Display & Download (with green buttons + JSON/TXT expanders)
+# UI: Display & Download (green buttons + expanders + birth‑info JSON)
 # -------------------------------------------------------------------
 if st.session_state.get("results"):
     st.subheader("Results & Downloads")
 
-    # Make the download buttons green
+    # Make download buttons green
     st.markdown("""
     <style>
       div.stDownloadButton > button {
@@ -421,55 +421,70 @@ if st.session_state.get("results"):
     </style>
     """, unsafe_allow_html=True)
 
-    # prepare filenames & data
-    ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe = "".join(c for c in st.session_state.birth_info.get("name","chart") if c.isalnum()) or "chart"
-    base = f"{safe}_{ts}"
+    # Build base filename: NAME-DD-MM-YYYY
+    bi     = st.session_state.birth_info
+    safe   = "".join(c for c in bi.get("name","chart") if c.isalnum()) or "chart"
+    ddmmyy = f"{bi['date']:02d}-{bi['month']:02d}-{bi['year']}"
+    base   = f"{safe}-{ddmmyy}"
+
+    # Prepare payloads
     raw  = json.dumps(st.session_state.results, indent=2)
     txt  = st.session_state.readable
+    info = json.dumps(bi, indent=2)
 
-    # downloads
-    c1, c2 = st.columns(2)
-    with c1:
+    # Two green download buttons
+    col1, col2 = st.columns(2)
+    with col1:
         st.download_button(
-            "Download Raw JSON",
+            label="Download Chart JSON",
             data=raw,
-            file_name=f"{base}_raw.json",
+            file_name=f"{base}-JSON.json",
             mime="application/json"
         )
-    with c2:
+    with col2:
         st.download_button(
-            "Download Readable TXT",
+            label="Download Readable TXT",
             data=txt,
-            file_name=f"{base}_readable.txt",
+            file_name=f"{base}-readable.txt",
             mime="text/plain"
         )
 
-    # usage instructions
     st.markdown("---")
+
+    # Instructions
     st.markdown(
-        "**👉 How to use the Raw JSON:**  \n"
-        "Download this JSON and feed it to your AI LLM (e.g. ChatGPT).  \n"
+        "**👉 Raw Chart JSON:**  \n"
+        "Save this file and feed it directly into your AI LLM (e.g. ChatGPT).  \n"
         "Prompt example:  \n"
-        "`Here is my Vedic chart data in JSON—please analyze and generate insights.`"
+        "`Here is my Vedic chart data in JSON. Please analyze and generate insights.`"
     )
     st.markdown(
-        "**⚠️ Disclaimer for the Readable TXT:**  \n"
-        "This file contains your raw birth details and calculation settings."
+        "**⚠️ Readable TXT Disclaimer:**  \n"
+        "This file contains your birth details and calculation settings."
     )
     st.markdown(
-        "**💡 Tip:** You can upload or paste either file into any AI model and ask questions (natal analysis, transits, compatibility, etc.)."
+        "**💡 Tip:**  \n"
+        "You can copy/paste either file into any AI model and ask questions—natal charts, transits, compatibility, etc."
     )
 
-    # expanders for inline viewing
+    # Expanders for inline preview
     with st.expander("Readable Summary"):
-        st.text_area("Summary", txt, height=300)
+        st.text_area("Summary (copy/paste if desired)", txt, height=300)
 
-    with st.expander("Raw JSON"):
+    with st.expander("Raw Chart JSON"):
         st.json(st.session_state.results)
 
-    st.markdown("---")
+    # -------------------------------------------------------------------
+    # Birth details JSON (for future reload)
+    # -------------------------------------------------------------------
+    with st.expander("Birth Details JSON (for reuse)"):
+        st.markdown(
+            "Copy and save this JSON snippet.  "
+            "You can paste it back into **Load Saved Birth JSON** to restore your inputs."
+        )
+        st.text_area("Birth JSON:", info, height=200)
 
+    st.markdown("---")
 # -------------------------------------------------------------------
 # UI: Advanced Settings & Clear
 # -------------------------------------------------------------------
