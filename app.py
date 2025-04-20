@@ -483,4 +483,5 @@ if st.button("Clear All & Start Over"):
     st.session_state.user_api_key = preserved
 
 st.markdown("---")
-st.caption("Built with Streamlit | Free Astrology API | Geocoding by Maps.co")
+st.caption("Built with Streamlit | Free Astrology API | Geocoding by Maps.co | Gemini 2.5 Pro | GPT 04-mini")
+
