@@ -414,7 +414,7 @@ with col1:
 with col2:
     st.markdown("**Lookup Coordinates by Place**")
     st.text_input("Enter Place Name (e.g., New York, USA):", key="place_input",
-                  placeholder="City, Country or City, State, Country")
+                  placeholder="City")
     st.button("Fetch Coordinates", on_click=do_geocode, key="geo_btn")
 
     st.markdown("**Location (Decimal Degrees)**")
