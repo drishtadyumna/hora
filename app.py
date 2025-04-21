@@ -1,4 +1,4 @@
-import streamlit as st
+  import streamlit as st
 import requests
 import json
 from datetime import datetime, date
@@ -347,7 +347,7 @@ st.markdown("---")
 # -------------------------------------------------------------------
 # UI: Chart Selection & Fetch
 # -------------------------------------------------------------------
-st.subheader("Select Charts to Fetch")
+st.subheader("Select Charts to Fetch - If you are getting any error, try after 5 mins")
 c1, c2 = st.columns(2)
 if c1.button("Select All"):
     for k in CHART_ENDPOINTS: st.session_state[f"cb_{k}"] = True
