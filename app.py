@@ -118,18 +118,17 @@ def fetch_astro_data(key, endpoint, payload):
         r = requests.post(f"{API_BASE_URL}{endpoint}",
                           json=payload,
                           headers={"Content-Type": "application/json", "x-api-key": key},
-                          timeout=15) # Increased timeout slightly
-        r.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
+                          timeout=15)
+        r.raise_for_status()
         return r.json()
     except requests.exceptions.HTTPError as http_err:
-        # Try to parse error details from response if possible
         details = r.text
         try:
             error_json = r.json()
-            details = error_json.get('message', details) # Use message if available
+            details = error_json.get('message', details)
         except json.JSONDecodeError:
-            pass # Keep r.text if not JSON
-        st.error(f"API HTTP Error {r.status_code}: {details[:500]}") # Show error in UI
+            pass
+        st.error(f"API HTTP Error {r.status_code}: {details[:500]}")
         return {"statusCode": r.status_code, "error": f"HTTP {r.status_code}", "details": details}
     except requests.exceptions.Timeout:
         st.error("API request timed out.")
@@ -147,7 +146,6 @@ def fetch_coordinates(place):
         return None, None, "Please enter a place name."
     try:
         params = {"q": place.strip()}
-        # Conditionally add API key if it's not empty
         if GEOCODE_API_KEY and GEOCODE_API_KEY.strip():
              params["api_key"] = GEOCODE_API_KEY
         else:
@@ -165,7 +163,7 @@ def fetch_coordinates(place):
         else:
             return None, None, f"Could not find coordinates for '{place}'."
     except requests.exceptions.HTTPError as http_err:
-        error_msg = f"Geocode HTTP Error {r.status_code}: {r.text[:200]}" # Limit error text length
+        error_msg = f"Geocode HTTP Error {r.status_code}: {r.text[:200]}"
         st.error(error_msg)
         return None, None, error_msg
     except requests.exceptions.RequestException as req_err:
@@ -187,12 +185,9 @@ def flatten_planet_output(raw_output):
 
     def ingest_data(data_dict):
         for key, value in data_dict.items():
-            if not isinstance(value, dict): continue # Skip non-dict items
+            if not isinstance(value, dict): continue
 
-            # Determine planet name
-            planet_name = value.get("name") or \
-                          name_map.get(str(key)) or \
-                          ("Ascendant" if str(key).lower() == "ascendant" else str(key))
+            planet_name = value.get("name") or                          name_map.get(str(key)) or                          ("Ascendant" if str(key).lower() == "ascendant" else str(key))
 
             planet_data[planet_name] = value
 
@@ -201,7 +196,7 @@ def flatten_planet_output(raw_output):
     elif isinstance(raw_output, list):
         for item in raw_output:
             if isinstance(item, dict):
-                ingest_data(item) # Handle cases where output might be a list of planet dicts
+                ingest_data(item)
 
     return planet_data
 
@@ -215,7 +210,6 @@ def generate_readable(birth_info, results_dict):
         f"Location: Lat {birth_info.get('latitude', 0.0):.4f}, Lon {birth_info.get('longitude', 0.0):.4f}",
     ])
 
-    # Find timezone label
     tz_value = birth_info.get("timezone", 0.0)
     tz_label = next((label for label, value in TIMEZONE_OPTIONS.items() if value == tz_value), f"UTC{tz_value:+g}")
     lines.extend([
@@ -230,17 +224,15 @@ def generate_readable(birth_info, results_dict):
     for chart_name, raw_result in results_dict.items():
         lines.append(f"-- {chart_name} --")
 
-        # Check for API errors first
         if not isinstance(raw_result, dict) or raw_result.get("statusCode") != 200:
             error_msg = raw_result.get("error", "Unknown Error")
             details = raw_result.get("details", "")
             lines.append(f"ERROR fetching chart: {error_msg}")
             if details:
-                lines.append(f"DETAILS: {details[:200]}...") # Truncate long details
+                lines.append(f"DETAILS: {details[:200]}...")
             lines.append("")
             continue
 
-        # Check if 'output' key exists and is not empty
         output_data = raw_result.get("output")
         if not output_data:
             lines.append("No chart data received in 'output'.")
@@ -255,7 +247,6 @@ def generate_readable(birth_info, results_dict):
 
         processed_planets = set()
 
-        # Print preferred planets first
         for planet in preferred_order:
             info = planets.get(planet)
             if not info: continue
@@ -275,7 +266,6 @@ def generate_readable(birth_info, results_dict):
 
             lines.append(f"{planet}: {sign_name} ({sign_num}) {degree_str}, {retro_str}{extras_str}")
 
-        # Print any remaining planets/points
         for planet, info in planets.items():
             if planet in processed_planets: continue
 
@@ -288,9 +278,8 @@ def generate_readable(birth_info, results_dict):
 
             lines.append(f"{planet}: {sign_name} ({sign_num}) {degree_str}, {retro_str}")
 
-        lines.append("") # Add space after each chart
+        lines.append("")
 
-    # Add the reloadable JSON at the end
     lines.extend([
         "="*40,
         "BIRTH JSON (for reload):",
@@ -310,13 +299,11 @@ def load_from_json():
         return
     try:
         data = json.loads(raw_json)
-        # Validate presence of expected keys
         missing_keys = [k for k in EXPECTED_BI_KEYS if k not in data]
         if missing_keys:
             st.error(f"JSON is missing required keys: {', '.join(missing_keys)}")
             return
 
-        # Basic type validation and conversion
         loaded_bi = {}
         try:
             for k in EXPECTED_BI_KEYS:
@@ -324,20 +311,18 @@ def load_from_json():
                     loaded_bi[k] = int(data[k])
                 elif k in ("latitude", "longitude", "timezone"):
                     loaded_bi[k] = float(data[k])
-                else: # name, observation_point, ayanamsha
+                else:
                     loaded_bi[k] = str(data[k])
         except (ValueError, TypeError) as e:
              st.error(f"Error converting JSON values: {e}")
              return
 
-        # Update session state
         st.session_state.birth_info = loaded_bi
-        # Update advanced settings in session state too
         st.session_state.obs_input = loaded_bi.get("observation_point", "topocentric")
         st.session_state.ayn_input = loaded_bi.get("ayanamsha", "lahiri")
         st.success("Successfully loaded birth details from JSON.")
-        st.session_state.json_input = "" # Clear input area
-        st.session_state.results = None # Clear previous results
+        st.session_state.json_input = ""
+        st.session_state.results = None
         st.session_state.readable = None
 
     except json.JSONDecodeError as e:
@@ -350,31 +335,33 @@ def do_geocode():
     place = st.session_state.get("place_input", "").strip()
     lat, lon, msg = fetch_coordinates(place)
     if lat is not None and lon is not None:
-        # Ensure birth_info exists before modifying
         if "birth_info" not in st.session_state:
             st.session_state.birth_info = {}
         st.session_state.birth_info["latitude"] = lat
         st.session_state.birth_info["longitude"] = lon
-        # Optionally update the input fields if they exist (handled by number_input value binding)
         st.success(f"Coordinates updated for {msg}: Lat {lat:.4f}, Lon {lon:.4f}")
     else:
-        st.error(f"Geocoding failed: {msg}") # Error message already shown by fetch_coordinates, this is redundant but ok
+        st.error(f"Geocoding failed: {msg}")
 
 # -------------------------------------------------------------------
 # Session State Initialization
 # -------------------------------------------------------------------
-# Initialize only if keys are completely absent
 if "birth_info" not in st.session_state:   st.session_state.birth_info = {}
 if "results"    not in st.session_state:   st.session_state.results = None
 if "readable"   not in st.session_state:   st.session_state.readable = None
 if "user_api_key" not in st.session_state: st.session_state.user_api_key = ""
 
-# Initialize chart selection checkboxes (default to True)
+# Initialize chart selection checkboxes (default to only D1, Extended Info, D9 & D10)
+default_selected_charts = {
+    "D1 (Rasi Chart)",
+    "Planets Extended Info",
+    "D9 (Navamsa Chart)",
+    "D10 (Dasamsa Chart)"
+}
 for k in CHART_ENDPOINTS:
     if f"cb_{k}" not in st.session_state:
-        st.session_state[f"cb_{k}"] = True
+        st.session_state[f"cb_{k}"] = (k in default_selected_charts)
 
-# Initialize advanced settings based on birth_info or defaults
 if "obs_input" not in st.session_state:
     st.session_state.obs_input = st.session_state.birth_info.get("observation_point", "topocentric")
 if "ayn_input" not in st.session_state:
@@ -393,23 +380,21 @@ st.markdown("---")
 # UI: Birth Details & Settings
 # -------------------------------------------------------------------
 st.subheader("Birth Details & Settings")
-bi = st.session_state.birth_info # Use the potentially loaded/updated info
+bi = st.session_state.birth_info
 
 col1, col2 = st.columns(2)
 with col1:
     name = st.text_input("Name:", value=bi.get("name", ""), key="name_input")
 
-    # Date Input - handle potential invalid dates from state gracefully
     try:
         default_bd = date(
             int(bi.get("year", 2000)),
             int(bi.get("month", 1)),
             int(bi.get("date", 1))
         )
-        # Ensure default date is not in the future or before reasonable min
         default_bd = max(date(1800, 1, 1), min(default_bd, date.today()))
     except (ValueError, TypeError):
-        default_bd = date(2000, 1, 1) # Fallback default
+        default_bd = date(2000, 1, 1)
 
     bd = st.date_input(
         "Birth Date:",
@@ -422,7 +407,6 @@ with col1:
 
     st.markdown("**Birth Time (24-hour format)**")
     t1, t2, t3 = st.columns(3)
-    # Use min/max directly in number_input for validation
     hr = t1.number_input("Hour", min_value=0, max_value=23, value=bi.get("hours", 12), format="%d", key="hour_input")
     mi = t2.number_input("Minute", min_value=0, max_value=59, value=bi.get("minutes", 0), format="%d", key="minute_input")
     se = t3.number_input("Second", min_value=0, max_value=59, value=bi.get("seconds", 0), format="%d", key="second_input")
@@ -434,31 +418,27 @@ with col2:
     st.button("Fetch Coordinates", on_click=do_geocode, key="geo_btn")
 
     st.markdown("**Location (Decimal Degrees)**")
-    # Latitude/Longitude directly reflect changes from geocoding via session state
     lat = st.number_input("Latitude:", min_value=-90.0, max_value=90.0, value=bi.get("latitude", 0.0), format="%.4f", key="latitude_input")
     lon = st.number_input("Longitude:", min_value=-180.0, max_value=180.0, value=bi.get("longitude", 0.0), format="%.4f", key="longitude_input")
 
     st.markdown("**Timezone**")
-    # Find index for current timezone value
-    current_tz_value = bi.get("timezone", 5.5) # Default to IST if not set
+    current_tz_value = bi.get("timezone", 5.5)
     try:
         tz_index = TIMEZONE_LABELS.index(
             next(lbl for lbl, val in TIMEZONE_OPTIONS.items() if val == current_tz_value)
         )
     except (StopIteration, ValueError):
-        tz_index = TIMEZONE_LABELS.index("UTC+05:30 IST") # Fallback index
+        tz_index = TIMEZONE_LABELS.index("UTC+05:30 IST")
 
     sel_tz_label = st.selectbox("Select Timezone:", TIMEZONE_LABELS, index=tz_index, key="timezone_select")
     tz_value = TIMEZONE_OPTIONS[sel_tz_label]
 
-# Advanced Calculation Settings (initially collapsed)
 with st.expander("Advanced Calculation Settings"):
     obs_opts = ["topocentric", "geocentric"]
-    # Use session state keys directly for selectbox index finding
     try:
         obs_index = obs_opts.index(st.session_state.obs_input)
     except ValueError:
-        obs_index = 0 # Default to topocentric
+        obs_index = 0
     obs = st.selectbox("Observation Point:", obs_opts, index=obs_index, key="obs_input_widget",
                        help="Topocentric is observer on Earth's surface, Geocentric is Earth's center.")
 
@@ -466,16 +446,12 @@ with st.expander("Advanced Calculation Settings"):
     try:
         ayn_index = ay_opts.index(st.session_state.ayn_input)
     except ValueError:
-        ayn_index = 0 # Default to lahiri
+        ayn_index = 0
     ayn = st.selectbox("Ayanamsha:", ay_opts, index=ayn_index, key="ayn_input_widget",
                        help="Lahiri is commonly used in Vedic astrology. Sayana uses the tropical zodiac.")
-    # Update session state based on widget selection immediately
     st.session_state.obs_input = obs
     st.session_state.ayn_input = ayn
 
-
-# Consolidate UI inputs into session_state.birth_info before fetching
-# This ensures the latest values from the UI are used
 st.session_state.birth_info = {
     "name": st.session_state.name_input,
     "year": bd.year, "month": bd.month, "date": bd.day,
@@ -484,69 +460,53 @@ st.session_state.birth_info = {
     "seconds": st.session_state.second_input,
     "latitude":  st.session_state.latitude_input,
     "longitude": st.session_state.longitude_input,
-    "timezone":  tz_value, # Get value from selected label
-    "observation_point": st.session_state.obs_input, # Directly from advanced settings state
-    "ayanamsha":         st.session_state.ayn_input  # Directly from advanced settings state
+    "timezone":  tz_value,
+    "observation_point": st.session_state.obs_input,
+    "ayanamsha":         st.session_state.ayn_input
 }
 
 st.markdown("---")
-# -------------------------------------------------------------------
-# UI: Chart Selection & Fetch
-# -------------------------------------------------------------------
 st.subheader("Select Charts to Fetch")
-# --- ADDED NOTICE ---
 st.caption("ℹ️ If you encounter errors during data fetching, please wait ~5 minutes and try again. This can happen due to API rate limits or temporary service issues.")
-# --- END NOTICE ---
 
 c1, c2 = st.columns(2)
 if c1.button("Select All Charts"):
     for k in CHART_ENDPOINTS: st.session_state[f"cb_{k}"] = True
-    st.rerun() # Rerun to reflect checkbox changes immediately
+    st.rerun()
 if c2.button("Unselect All Charts"):
     for k in CHART_ENDPOINTS: st.session_state[f"cb_{k}"] = False
-    st.rerun() # Rerun to reflect checkbox changes immediately
+    st.rerun()
 
-# Display checkboxes in columns
 cols = st.columns(3)
-selected_charts = {} # Dictionary to store user's selection status
+selected_charts = {}
 chart_options = list(CHART_ENDPOINTS.keys())
-charts_per_col = (len(chart_options) + len(cols) - 1) // len(cols) # Calculate items per column
+charts_per_col = (len(chart_options) + len(cols) - 1) // len(cols)
 
 for i, chart_name in enumerate(chart_options):
     col_index = i // charts_per_col
-    # Use the session state key for the checkbox value and key
     is_selected = cols[col_index].checkbox(chart_name,
-                                           value=st.session_state.get(f"cb_{chart_name}", True),
+                                           value=st.session_state.get(f"cb_{chart_name}", False),
                                            key=f"cb_{chart_name}")
-    selected_charts[chart_name] = is_selected # Store the current status
+    selected_charts[chart_name] = is_selected
 
-# Main Fetch Button
 if st.button("Fetch Astrological Data", type="primary", key="fetch_data_btn"):
-    # Use the consolidated birth_info from session state
     current_bi = st.session_state.birth_info
-
-    # Re-validate required fields before attempting API call
     missing = [k for k in EXPECTED_BI_KEYS if k not in current_bi or current_bi[k] is None]
-    # Also check for potentially empty strings that are required numerically
     if not current_bi.get("latitude") is not None: missing.append("latitude")
     if not current_bi.get("longitude") is not None: missing.append("longitude")
 
     if missing:
         st.error(f"Incomplete birth details. Please provide: {', '.join(sorted(list(set(missing))))}")
     else:
-        # Get the list of charts the user actually selected NOW
-        charts_to_fetch = [name for name, selected in selected_charts.items() if selected]
-
+        charts_to_fetch = [name for name, sel in selected_charts.items() if sel]
         if not charts_to_fetch:
             st.warning("Please select at least one chart to fetch.")
         else:
-            # Clear previous results before starting new fetch
             st.session_state.results = None
             st.session_state.readable = None
             st.info(f"Starting fetch for {len(charts_to_fetch)} chart(s)...")
 
             api_key = st.session_state.user_api_key.strip() or DEFAULT_ASTRO_API_KEY
-            # Construct the payload from the validated birth_info
             payload = {
                 "year": current_bi["year"], "month": current_bi["month"], "date": current_bi["date"],
                 "hours": current_bi["hours"], "minutes": current_bi["minutes"], "seconds": current_bi["seconds"],
@@ -555,94 +515,73 @@ if st.button("Fetch Astrological Data", type="primary", key="fetch_data_btn"):
                 "settings": {
                     "observation_point": current_bi["observation_point"],
                     "ayanamsha": current_bi["ayanamsha"],
-                    "language": "en" # Keep language fixed for now
+                    "language": "en"
                 }
             }
 
             results_accumulator = {}
             has_errors = False
             progress_bar = st.progress(0.0)
-            status_text = st.empty() # Placeholder for status updates
+            status_text = st.empty()
 
             for idx, chart_name in enumerate(charts_to_fetch):
                 endpoint = CHART_ENDPOINTS[chart_name]
                 status_text.text(f"Fetching {chart_name} ({idx+1}/{len(charts_to_fetch)})...")
-
-                # Fetch data for the current chart
                 res = fetch_astro_data(api_key, endpoint, payload)
                 results_accumulator[chart_name] = res
-
-                # Update progress bar
                 progress = (idx + 1) / len(charts_to_fetch)
                 progress_bar.progress(progress)
 
-                # Check if the result indicates an error
                 if not isinstance(res, dict) or res.get("statusCode") != 200:
                     has_errors = True
-                    # Error message is already displayed by fetch_astro_data
                     status_text.warning(f"Error fetching {chart_name}. Check error message above.")
-                    # Optionally break or continue based on desired behavior for errors
-                    # break # Uncomment to stop fetching on first error
 
-                # Wait before the next call (if not the last one)
                 if idx < len(charts_to_fetch) - 1:
                     pytime.sleep(API_CALL_DELAY)
 
-            progress_bar.empty() # Remove progress bar on completion
-            status_text.empty()  # Clear status text
+            progress_bar.empty()
+            status_text.empty()
 
-            # Final status message
             if has_errors:
                 st.warning("Fetch completed with some errors. Results might be incomplete.")
             else:
                 st.success("Fetch complete.")
 
-            # Store results and generate readable output
             st.session_state.results = results_accumulator
-            # Generate readable summary using the *used* birth info and the fetched results
             st.session_state.readable = generate_readable(current_bi, results_accumulator)
-            # Rerun to display results section
             st.rerun()
-
 
 st.markdown("---")
 
-# -------------------------------------------------------------------
-# UI: Display & Download Results
-# -------------------------------------------------------------------
-# This section only shows if results are present in session state
 if st.session_state.get("results"):
     st.subheader("Results & Downloads")
 
-    # Apply custom styling for green download buttons
     st.markdown("""
     <style>
       div.stDownloadButton > button {
-        background-color: #28a745 !important; /* Green */
+        background-color: #28a745 !important;
         color: white !important;
-        border: 1px solid #218838 !important; /* Darker green border */
+        border: 1px solid #218838 !important;
         border-radius: 5px;
         padding: 0.4rem 0.75rem;
       }
       div.stDownloadButton > button:hover {
-        background-color: #218838 !important; /* Darker green on hover */
+        background-color: #218838 !important;
         border-color: #1e7e34 !important;
       }
     </style>
     """, unsafe_allow_html=True)
 
-    # Generate filename base (using potentially updated name)
     bi_for_filename = st.session_state.birth_info
     safe_name = "".join(c for c in bi_for_filename.get("name", "chart") if c.isalnum() or c in "-_").strip() or "chart"
     date_str = f"{bi_for_filename.get('date', 'DD'):02d}-{bi_for_filename.get('month', 'MM'):02d}-{bi_for_filename.get('year', 'YYYY')}"
     base_filename = f"{safe_name}-{date_str}"
 
-    # Prepare data for download
     try:
         raw_json_data = json.dumps(st.session_state.results, indent=2, ensure_ascii=False)
     except Exception as e:
         st.error(f"Could not serialize results to JSON: {e}")
-        raw_json_data = "{}" # Provide empty JSON on error
+        raw_json_data = "{}"
 
     readable_text_data = st.session_state.get("readable", "No readable summary generated.")
 
@@ -652,7 +591,6 @@ if st.session_state.get("results"):
         st.error(f"Could not serialize birth info to JSON: {e}")
         birth_info_json_data = "{}"
 
-    # Download Buttons in columns
     col_dl1, col_dl2 = st.columns(2)
     with col_dl1:
         st.download_button(
@@ -673,7 +611,6 @@ if st.session_state.get("results"):
 
     st.markdown("---")
 
-    # Usage Instructions
     st.markdown(
         """
         **How to Use the Downloads:**
@@ -689,14 +626,12 @@ if st.session_state.get("results"):
         """
     )
 
-    # Expanders for inline preview
     with st.expander("View Readable Summary"):
         st.text_area("Summary Preview:", readable_text_data, height=350, key="readable_preview", disabled=True)
 
     with st.expander("View Raw Chart JSON"):
-        st.json(st.session_state.results, expanded=False) # Keep it collapsed by default
+        st.json(st.session_state.results, expanded=False)
 
-    # Expander for Birth Details JSON (for reloading)
     with st.expander("View Birth Details JSON (for Reuse)"):
         st.markdown(
             "Copy the JSON below and save it. You can paste it into the **Load Saved Birth JSON** section at the top to quickly restore these birth details later."
@@ -705,34 +640,43 @@ if st.session_state.get("results"):
 
     st.markdown("---")
 
-# -------------------------------------------------------------------
-# UI: Advanced Settings & Clear
-# -------------------------------------------------------------------
 with st.expander("Advanced Settings & App Reset"):
     st.text_input("Custom Astrology API Key (Optional)", key="user_api_key", type="password",
                   help="Enter your personal API key from freeastrologyapi.com if you have one. Otherwise, a default key is used.")
 
     if st.button("Clear All Inputs & Results", key="clear_all_btn",
                  help="Resets all birth details, chart selections, and results. Keeps custom API key if entered."):
-        # Preserve API key if user entered one
         preserved_key = st.session_state.get("user_api_key", "")
-        # Get list of keys to delete (avoid modifying dict while iterating)
         keys_to_delete = [k for k in st.session_state.keys() if k != 'user_api_key']
         for k in keys_to_delete:
             del st.session_state[k]
-        # Restore the key
         st.session_state.user_api_key = preserved_key
-        # Re-initialize essential states after clearing
         st.session_state.birth_info = {}
         st.session_state.results = None
         st.session_state.readable = None
-        st.session_state.obs_input = "topocentric" # Reset advanced settings state
+        st.session_state.obs_input = "topocentric"
         st.session_state.ayn_input = "lahiri"
-        for k in CHART_ENDPOINTS: # Reset checkboxes
-            st.session_state[f"cb_{k}"] = True
+        for k in CHART_ENDPOINTS:
+            st.session_state[f"cb_{k}"] = (k in default_selected_charts)
         st.success("All inputs and results cleared.")
-        st.rerun() # Rerun to reflect the cleared state
+        st.rerun()
 
+# Place this wherever you want the button to appear:
+if st.button("🔄 Clear Session & Reset"):
+    # (optional) preserve your custom API key
+    preserved_key = st.session_state.get("user_api_key", "")
+    # clear everything
+    st.session_state.clear()
+    # restore the API key
+    st.session_state.user_api_key = preserved_key
+    # rerun the app from top
+    st.rerun()
+    # Option 2 (if you want to preserve a specific key, e.g. user_api_key):
+    # preserved = st.session_state.get("user_api_key", "")
+    # st.session_state.clear()
+    # st.session_state.user_api_key = preserved
+
+    st.experimental_rerun()
 
 st.markdown("---")
 st.caption("Built using Streamlit | Astrology data via freeastrologyapi.com | Geocoding via geocode.maps.co")
