@@ -29,7 +29,7 @@ st.markdown("---")
 API_BASE_URL          = "https://json.freeastrologyapi.com/"
 GEOCODE_API_URL       = "https://geocode.maps.co/search"
 GEOCODE_API_KEY       = "680561227fda9856529449uxwa70717" # Replace with your key if needed
-DEFAULT_ASTRO_API_KEY = "5EIAafVray9EwCr2Lz1kB1ofbkUmzoy76kbGnRav" # Replace with your key if needed
+DEFAULT_ASTRO_API_KEY = "1pK0yvcDkMaS750G6v2VA8lglgTm1bcO3thzyrTK" # Replace with your key if needed
 API_CALL_DELAY        = 1.0 # Delay in seconds between API calls
 
 SIGN_NAMES = {
