@@ -113,6 +113,9 @@ EXPECTED_BI_KEYS = [
 def fetch_astro_data(key, endpoint, payload):
     """Fetches data from the astrology API."""
     if not key:
+        # This scenario should ideally be handled before calling,
+        # but as a safeguard:
+        st.error("API key is missing. Cannot make request.")
         return {"statusCode": 400, "error": "API key missing."}
     try:
         r = requests.post(f"{API_BASE_URL}{endpoint}",
@@ -126,18 +129,24 @@ def fetch_astro_data(key, endpoint, payload):
         try:
             error_json = r.json()
             details = error_json.get('message', details)
+            # Check for common API key errors
+            if r.status_code == 403 and 'Invalid API key' in details:
+                st.error("API Error 403: Invalid API key provided. Please check your key or leave blank to use the default.")
+            elif r.status_code == 429:
+                 st.error("API Error 429: Rate limit exceeded. Please wait before trying again. Using your own key might help.")
+            else:
+                 st.error(f"API HTTP Error {r.status_code}: {details[:500]}")
         except json.JSONDecodeError:
-            pass
-        st.error(f"API HTTP Error {r.status_code}: {details[:500]}")
+             st.error(f"API HTTP Error {r.status_code}: {details[:500]}") # Show raw text if not JSON
         return {"statusCode": r.status_code, "error": f"HTTP {r.status_code}", "details": details}
     except requests.exceptions.Timeout:
-        st.error("API request timed out.")
+        st.error("API request timed out. The server might be busy. Try again later.")
         return {"statusCode": 408, "error": "Request Timeout"}
     except requests.exceptions.RequestException as req_err:
-        st.error(f"API Request Error: {req_err}")
+        st.error(f"API Request Error: Could not connect to the API. Check your internet connection. Error: {req_err}")
         return {"statusCode": None, "error": "Request Exception", "details": str(req_err)}
     except Exception as e:
-        st.error(f"An unexpected error occurred: {e}")
+        st.error(f"An unexpected error occurred during API call: {e}")
         return {"statusCode": None, "error": "Unexpected Exception", "details": str(e)}
 
 def fetch_coordinates(place):
@@ -266,6 +275,7 @@ def generate_readable(birth_info, results_dict):
 
             lines.append(f"{planet}: {sign_name} ({sign_num}) {degree_str}, {retro_str}{extras_str}")
 
+        # Process any remaining planets not in preferred order (shouldn't happen often with current API)
         for planet, info in planets.items():
             if planet in processed_planets: continue
 
@@ -299,34 +309,42 @@ def load_from_json():
         return
     try:
         data = json.loads(raw_json)
-        missing_keys = [k for k in EXPECTED_BI_KEYS if k not in data]
+        # Check for core keys, allow flexibility for missing ones initially
+        core_keys = ["year", "month", "date", "hours", "minutes", "seconds", "latitude", "longitude", "timezone"]
+        missing_keys = [k for k in core_keys if k not in data]
         if missing_keys:
-            st.error(f"JSON is missing required keys: {', '.join(missing_keys)}")
-            return
+            st.warning(f"JSON might be missing some keys: {', '.join(missing_keys)}. Defaults will be used if possible.")
+            # Allow loading even with missing keys, let validation happen later
 
         loaded_bi = {}
-        try:
-            for k in EXPECTED_BI_KEYS:
-                if k in ("year", "month", "date", "hours", "minutes", "seconds"):
-                    loaded_bi[k] = int(data[k])
-                elif k in ("latitude", "longitude", "timezone"):
-                    loaded_bi[k] = float(data[k])
-                else:
-                    loaded_bi[k] = str(data[k])
-        except (ValueError, TypeError) as e:
-             st.error(f"Error converting JSON values: {e}")
-             return
+        # Use .get() with defaults for safety
+        loaded_bi["name"] = str(data.get("name", ""))
+        loaded_bi["year"] = int(data.get("year", 2000))
+        loaded_bi["month"] = int(data.get("month", 1))
+        loaded_bi["date"] = int(data.get("date", 1))
+        loaded_bi["hours"] = int(data.get("hours", 12))
+        loaded_bi["minutes"] = int(data.get("minutes", 0))
+        loaded_bi["seconds"] = int(data.get("seconds", 0))
+        loaded_bi["latitude"] = float(data.get("latitude", 0.0))
+        loaded_bi["longitude"] = float(data.get("longitude", 0.0))
+        loaded_bi["timezone"] = float(data.get("timezone", 5.5)) # Default to IST
+        loaded_bi["observation_point"] = str(data.get("observation_point", "topocentric"))
+        loaded_bi["ayanamsha"] = str(data.get("ayanamsha", "lahiri"))
 
         st.session_state.birth_info = loaded_bi
+        # Update advanced settings based on loaded JSON
         st.session_state.obs_input = loaded_bi.get("observation_point", "topocentric")
         st.session_state.ayn_input = loaded_bi.get("ayanamsha", "lahiri")
+
         st.success("Successfully loaded birth details from JSON.")
-        st.session_state.json_input = ""
-        st.session_state.results = None
+        st.session_state.json_input = "" # Clear the input box
+        st.session_state.results = None # Clear previous results
         st.session_state.readable = None
 
     except json.JSONDecodeError as e:
         st.error(f"Invalid JSON format: {e}")
+    except (ValueError, TypeError) as e:
+         st.error(f"Error converting JSON values: {e}. Please ensure numbers are valid.")
     except Exception as e:
         st.error(f"An unexpected error occurred during JSON loading: {e}")
 
@@ -336,9 +354,12 @@ def do_geocode():
     lat, lon, msg = fetch_coordinates(place)
     if lat is not None and lon is not None:
         if "birth_info" not in st.session_state:
-            st.session_state.birth_info = {}
+            st.session_state.birth_info = {} # Should already exist, but safety check
         st.session_state.birth_info["latitude"] = lat
         st.session_state.birth_info["longitude"] = lon
+        # Update the number input widgets directly to reflect the change
+        st.session_state.latitude_input = lat
+        st.session_state.longitude_input = lon
         st.success(f"Coordinates updated for {msg}: Lat {lat:.4f}, Lon {lon:.4f}")
     else:
         st.error(f"Geocoding failed: {msg}")
@@ -349,7 +370,9 @@ def do_geocode():
 if "birth_info" not in st.session_state:   st.session_state.birth_info = {}
 if "results"    not in st.session_state:   st.session_state.results = None
 if "readable"   not in st.session_state:   st.session_state.readable = None
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< ADDED >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 if "user_api_key" not in st.session_state: st.session_state.user_api_key = ""
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END ADDED >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 # Initialize chart selection checkboxes (default to only D1, Extended Info, D9 & D10)
 default_selected_charts = {
@@ -362,10 +385,29 @@ for k in CHART_ENDPOINTS:
     if f"cb_{k}" not in st.session_state:
         st.session_state[f"cb_{k}"] = (k in default_selected_charts)
 
+# Initialize advanced settings from birth_info if available, else defaults
 if "obs_input" not in st.session_state:
     st.session_state.obs_input = st.session_state.birth_info.get("observation_point", "topocentric")
 if "ayn_input" not in st.session_state:
     st.session_state.ayn_input = st.session_state.birth_info.get("ayanamsha", "lahiri")
+
+# -------------------------------------------------------------------
+# UI: API Key Input (Moved to Top)
+# -------------------------------------------------------------------
+st.markdown("#### Astrology API Key (Optional)")
+st.markdown("""
+Sign up at [freeastrologyapi.com](https://freeastrologyapi.com/) to get your own free API key.
+Using your own key is recommended for higher usage limits and reliability.
+If you leave this blank, a shared default key will be used (which may encounter rate limits more often).
+""")
+st.text_input(
+    "Enter Your FreeAstrologyAPI Key:",
+    key="user_api_key",
+    type="password",
+    help="Paste your personal API key here. It will be used instead of the default key."
+)
+st.markdown("---") # Separator
+
 
 # -------------------------------------------------------------------
 # UI: Load JSON
@@ -380,20 +422,24 @@ st.markdown("---")
 # UI: Birth Details & Settings
 # -------------------------------------------------------------------
 st.subheader("Birth Details & Settings")
-bi = st.session_state.birth_info
+# Use st.session_state directly for default values in widgets
+# This ensures widgets reflect loaded JSON or geocoding results
+bi = st.session_state.birth_info # Keep for easy access below if needed
 
 col1, col2 = st.columns(2)
 with col1:
-    name = st.text_input("Name:", value=bi.get("name", ""), key="name_input")
+    name = st.text_input("Name:", value=st.session_state.birth_info.get("name", ""), key="name_input")
 
     try:
+        # Use values from session state for default date
         default_bd = date(
-            int(bi.get("year", 2000)),
-            int(bi.get("month", 1)),
-            int(bi.get("date", 1))
+            int(st.session_state.birth_info.get("year", 2000)),
+            int(st.session_state.birth_info.get("month", 1)),
+            int(st.session_state.birth_info.get("date", 1))
         )
+        # Clamp date to valid range
         default_bd = max(date(1800, 1, 1), min(default_bd, date.today()))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, KeyError): # Catch potential errors if session state values are bad
         default_bd = date(2000, 1, 1)
 
     bd = st.date_input(
@@ -407,9 +453,10 @@ with col1:
 
     st.markdown("**Birth Time (24-hour format)**")
     t1, t2, t3 = st.columns(3)
-    hr = t1.number_input("Hour", min_value=0, max_value=23, value=bi.get("hours", 12), format="%d", key="hour_input")
-    mi = t2.number_input("Minute", min_value=0, max_value=59, value=bi.get("minutes", 0), format="%d", key="minute_input")
-    se = t3.number_input("Second", min_value=0, max_value=59, value=bi.get("seconds", 0), format="%d", key="second_input")
+    # Use session state values for time defaults
+    hr = t1.number_input("Hour", min_value=0, max_value=23, value=st.session_state.birth_info.get("hours", 12), format="%d", key="hour_input")
+    mi = t2.number_input("Minute", min_value=0, max_value=59, value=st.session_state.birth_info.get("minutes", 0), format="%d", key="minute_input")
+    se = t3.number_input("Second", min_value=0, max_value=59, value=st.session_state.birth_info.get("seconds", 0), format="%d", key="second_input")
 
 with col2:
     st.markdown("**Lookup Coordinates by Place**")
@@ -418,16 +465,20 @@ with col2:
     st.button("Fetch Coordinates", on_click=do_geocode, key="geo_btn")
 
     st.markdown("**Location (Decimal Degrees)**")
-    lat = st.number_input("Latitude:", min_value=-90.0, max_value=90.0, value=bi.get("latitude", 0.0), format="%.4f", key="latitude_input")
-    lon = st.number_input("Longitude:", min_value=-180.0, max_value=180.0, value=bi.get("longitude", 0.0), format="%.4f", key="longitude_input")
+    # Use session state values for lat/lon defaults, reflecting geocoding/JSON load
+    lat = st.number_input("Latitude:", min_value=-90.0, max_value=90.0, value=st.session_state.birth_info.get("latitude", 0.0), format="%.4f", key="latitude_input")
+    lon = st.number_input("Longitude:", min_value=-180.0, max_value=180.0, value=st.session_state.birth_info.get("longitude", 0.0), format="%.4f", key="longitude_input")
 
     st.markdown("**Timezone**")
-    current_tz_value = bi.get("timezone", 5.5)
+    # Use session state value for timezone default
+    current_tz_value = st.session_state.birth_info.get("timezone", 5.5) # Default to IST if not set
     try:
+        # Find the index corresponding to the current value
         tz_index = TIMEZONE_LABELS.index(
             next(lbl for lbl, val in TIMEZONE_OPTIONS.items() if val == current_tz_value)
         )
     except (StopIteration, ValueError):
+         # If value not found (e.g., from manual JSON edit), default to IST index
         tz_index = TIMEZONE_LABELS.index("UTC+05:30 IST")
 
     sel_tz_label = st.selectbox("Select Timezone:", TIMEZONE_LABELS, index=tz_index, key="timezone_select")
@@ -436,22 +487,27 @@ with col2:
 with st.expander("Advanced Calculation Settings"):
     obs_opts = ["topocentric", "geocentric"]
     try:
+        # Use session state obs_input for index
         obs_index = obs_opts.index(st.session_state.obs_input)
     except ValueError:
-        obs_index = 0
+        obs_index = 0 # Default to topocentric if value is invalid
     obs = st.selectbox("Observation Point:", obs_opts, index=obs_index, key="obs_input_widget",
                        help="Topocentric is observer on Earth's surface, Geocentric is Earth's center.")
 
     ay_opts = ["lahiri", "sayana"]
     try:
+         # Use session state ayn_input for index
         ayn_index = ay_opts.index(st.session_state.ayn_input)
     except ValueError:
-        ayn_index = 0
+        ayn_index = 0 # Default to lahiri if value is invalid
     ayn = st.selectbox("Ayanamsha:", ay_opts, index=ayn_index, key="ayn_input_widget",
                        help="Lahiri is commonly used in Vedic astrology. Sayana uses the tropical zodiac.")
+    # Update session state directly when widgets change
     st.session_state.obs_input = obs
     st.session_state.ayn_input = ayn
 
+# Update birth_info in session state *after* all widgets are defined
+# This ensures it always reflects the current UI state before fetching
 st.session_state.birth_info = {
     "name": st.session_state.name_input,
     "year": bd.year, "month": bd.month, "date": bd.day,
@@ -461,8 +517,8 @@ st.session_state.birth_info = {
     "latitude":  st.session_state.latitude_input,
     "longitude": st.session_state.longitude_input,
     "timezone":  tz_value,
-    "observation_point": st.session_state.obs_input,
-    "ayanamsha":         st.session_state.ayn_input
+    "observation_point": st.session_state.obs_input, # Use updated value from session state
+    "ayanamsha":         st.session_state.ayn_input  # Use updated value from session state
 }
 
 st.markdown("---")
@@ -484,29 +540,43 @@ charts_per_col = (len(chart_options) + len(cols) - 1) // len(cols)
 
 for i, chart_name in enumerate(chart_options):
     col_index = i // charts_per_col
+    # Read value directly from session state checkbox key
     is_selected = cols[col_index].checkbox(chart_name,
                                            value=st.session_state.get(f"cb_{chart_name}", False),
                                            key=f"cb_{chart_name}")
-    selected_charts[chart_name] = is_selected
+    selected_charts[chart_name] = is_selected # Keep track of selections for the fetch button logic
 
 if st.button("Fetch Astrological Data", type="primary", key="fetch_data_btn"):
-    current_bi = st.session_state.birth_info
-    missing = [k for k in EXPECTED_BI_KEYS if k not in current_bi or current_bi[k] is None]
-    if not current_bi.get("latitude") is not None: missing.append("latitude")
-    if not current_bi.get("longitude") is not None: missing.append("longitude")
+    current_bi = st.session_state.birth_info # Get the latest birth info
+    # Validate required fields (latitude/longitude are crucial)
+    missing = []
+    if current_bi.get("latitude") is None or current_bi.get("longitude") is None:
+        missing.append("latitude/longitude (fetch or enter manually)")
+    # You could add more checks here if needed, e.g., for date/time validity if desired
 
     if missing:
-        st.error(f"Incomplete birth details. Please provide: {', '.join(sorted(list(set(missing))))}")
+        st.error(f"Incomplete birth details. Please provide: {', '.join(missing)}")
     else:
         charts_to_fetch = [name for name, sel in selected_charts.items() if sel]
         if not charts_to_fetch:
             st.warning("Please select at least one chart to fetch.")
         else:
-            st.session_state.results = None
+            st.session_state.results = None # Clear previous results
             st.session_state.readable = None
             st.info(f"Starting fetch for {len(charts_to_fetch)} chart(s)...")
 
-            api_key = st.session_state.user_api_key.strip() or DEFAULT_ASTRO_API_KEY
+            # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< MODIFIED >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            # Determine which API key to use
+            user_key = st.session_state.user_api_key.strip()
+            api_key_to_use = user_key if user_key else DEFAULT_ASTRO_API_KEY
+
+            if not user_key:
+                st.info("Using the default API key. Consider adding your own key from freeastrologyapi.com for better performance.", icon="ℹ️")
+            else:
+                 st.info("Using your provided API key.", icon="🔑")
+            # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< END MODIFIED >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+            # Prepare payload using the most recent birth_info from session state
             payload = {
                 "year": current_bi["year"], "month": current_bi["month"], "date": current_bi["date"],
                 "hours": current_bi["hours"], "minutes": current_bi["minutes"], "seconds": current_bi["seconds"],
@@ -515,7 +585,7 @@ if st.button("Fetch Astrological Data", type="primary", key="fetch_data_btn"):
                 "settings": {
                     "observation_point": current_bi["observation_point"],
                     "ayanamsha": current_bi["ayanamsha"],
-                    "language": "en"
+                    "language": "en" # Assuming English is desired
                 }
             }
 
@@ -527,32 +597,39 @@ if st.button("Fetch Astrological Data", type="primary", key="fetch_data_btn"):
             for idx, chart_name in enumerate(charts_to_fetch):
                 endpoint = CHART_ENDPOINTS[chart_name]
                 status_text.text(f"Fetching {chart_name} ({idx+1}/{len(charts_to_fetch)})...")
-                res = fetch_astro_data(api_key, endpoint, payload)
+                # <<<<<<<<<<<<<<<<<<<<<<<< MODIFIED: Pass the chosen key >>>>>>>>>>>>>>>>>>
+                res = fetch_astro_data(api_key_to_use, endpoint, payload)
+                # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                 results_accumulator[chart_name] = res
                 progress = (idx + 1) / len(charts_to_fetch)
                 progress_bar.progress(progress)
 
+                # Check for errors specifically from the API response structure
                 if not isinstance(res, dict) or res.get("statusCode") != 200:
                     has_errors = True
-                    status_text.warning(f"Error fetching {chart_name}. Check error message above.")
+                    # Error messages are now shown directly within fetch_astro_data
+                    # status_text.warning(f"Error fetching {chart_name}. See message above.") # Optional: Keep status text updated
 
+                # Add delay between calls
                 if idx < len(charts_to_fetch) - 1:
                     pytime.sleep(API_CALL_DELAY)
 
-            progress_bar.empty()
-            status_text.empty()
+            progress_bar.empty() # Remove progress bar
+            status_text.empty() # Clear status text
 
             if has_errors:
-                st.warning("Fetch completed with some errors. Results might be incomplete.")
+                st.warning("Fetch completed, but some errors occurred. Results might be incomplete. Check messages above for details.", icon="⚠️")
             else:
                 st.success("Fetch complete.")
 
+            # Store results and generate readable summary
             st.session_state.results = results_accumulator
             st.session_state.readable = generate_readable(current_bi, results_accumulator)
-            st.rerun()
+            st.rerun() # Rerun to display results sections
 
 st.markdown("---")
 
+# --- Results Display Section ---
 if st.session_state.get("results"):
     st.subheader("Results & Downloads")
 
@@ -572,16 +649,18 @@ if st.session_state.get("results"):
     </style>
     """, unsafe_allow_html=True)
 
+    # Generate filenames based on current birth info
     bi_for_filename = st.session_state.birth_info
     safe_name = "".join(c for c in bi_for_filename.get("name", "chart") if c.isalnum() or c in "-_").strip() or "chart"
     date_str = f"{bi_for_filename.get('date', 'DD'):02d}-{bi_for_filename.get('month', 'MM'):02d}-{bi_for_filename.get('year', 'YYYY')}"
     base_filename = f"{safe_name}-{date_str}"
 
+    # Prepare data for download buttons
     try:
         raw_json_data = json.dumps(st.session_state.results, indent=2, ensure_ascii=False)
     except Exception as e:
         st.error(f"Could not serialize results to JSON: {e}")
-        raw_json_data = "{}"
+        raw_json_data = "{}" # Provide empty JSON as fallback
 
     readable_text_data = st.session_state.get("readable", "No readable summary generated.")
 
@@ -589,8 +668,9 @@ if st.session_state.get("results"):
         birth_info_json_data = json.dumps(st.session_state.birth_info, indent=2, ensure_ascii=False)
     except Exception as e:
         st.error(f"Could not serialize birth info to JSON: {e}")
-        birth_info_json_data = "{}"
+        birth_info_json_data = "{}" # Provide empty JSON as fallback
 
+    # Download Buttons
     col_dl1, col_dl2 = st.columns(2)
     with col_dl1:
         st.download_button(
@@ -611,6 +691,7 @@ if st.session_state.get("results"):
 
     st.markdown("---")
 
+    # Explanations and Previews
     st.markdown(
         """
         **How to Use the Downloads:**
@@ -640,43 +721,53 @@ if st.session_state.get("results"):
 
     st.markdown("---")
 
-with st.expander("Advanced Settings & App Reset"):
-    st.text_input("Custom Astrology API Key (Optional)", key="user_api_key", type="password",
-                  help="Enter your personal API key from freeastrologyapi.com if you have one. Otherwise, a default key is used.")
+# --- Advanced/Reset Section ---
+# This section is now independent of whether results exist
+# It also contains the API key input which was moved higher
+with st.expander("App Reset Options"):
+    # Moved API key input higher up in the script
 
+    # Clear All Inputs Button
     if st.button("Clear All Inputs & Results", key="clear_all_btn",
                  help="Resets all birth details, chart selections, and results. Keeps custom API key if entered."):
+        # Preserve the custom API key if it exists
         preserved_key = st.session_state.get("user_api_key", "")
-        keys_to_delete = [k for k in st.session_state.keys() if k != 'user_api_key']
-        for k in keys_to_delete:
-            del st.session_state[k]
-        st.session_state.user_api_key = preserved_key
+
+        # Identify keys to keep (only the API key in this case)
+        keys_to_keep = ["user_api_key"]
+
+        # Get all current session state keys
+        all_keys = list(st.session_state.keys())
+
+        # Delete keys that are NOT in the keep list
+        for k in all_keys:
+            if k not in keys_to_keep:
+                del st.session_state[k]
+
+        # Re-initialize necessary states after clearing
         st.session_state.birth_info = {}
         st.session_state.results = None
         st.session_state.readable = None
-        st.session_state.obs_input = "topocentric"
+        st.session_state.obs_input = "topocentric" # Reset advanced settings
         st.session_state.ayn_input = "lahiri"
+        # Reset chart selections to default
         for k in CHART_ENDPOINTS:
             st.session_state[f"cb_{k}"] = (k in default_selected_charts)
-        st.success("All inputs and results cleared.")
+
+        # Ensure the preserved key is still there (it should be, but belt-and-suspenders)
+        if "user_api_key" not in st.session_state:
+             st.session_state.user_api_key = preserved_key
+
+        st.success("All inputs and results cleared (API key preserved).")
+        st.rerun() # Rerun to reflect the cleared state
+
+    # Full Session Reset Button
+    if st.button("🔄 Clear Entire Session & Reset App", key="full_reset_btn",
+                 help="Completely clears the application's memory, including any custom API key. Use if the app behaves unexpectedly."):
+        # Clear everything in the session state
+        st.session_state.clear()
+        # Rerun the app from the very beginning
         st.rerun()
-
-# Place this wherever you want the button to appear:
-if st.button("🔄 Clear Session & Reset"):
-    # (optional) preserve your custom API key
-    preserved_key = st.session_state.get("user_api_key", "")
-    # clear everything
-    st.session_state.clear()
-    # restore the API key
-    st.session_state.user_api_key = preserved_key
-    # rerun the app from top
-    st.rerun()
-    # Option 2 (if you want to preserve a specific key, e.g. user_api_key):
-    # preserved = st.session_state.get("user_api_key", "")
-    # st.session_state.clear()
-    # st.session_state.user_api_key = preserved
-
-    st.experimental_rerun()
 
 st.markdown("---")
 st.caption("Built using Streamlit | Astrology data via freeastrologyapi.com | Geocoding via geocode.maps.co")
