@@ -40,6 +40,7 @@ st.markdown(
 
     • Go to <https://freeastrologyapi.com/> and sign-up (free) to get a personal key.  
     • Paste it below for higher rate-limits, or leave blank to use the demo key bundled with this app.
+    - 5EIAafVray9EwCr2Lz1kB1ofbkUmzoy76kbGnRav
     """
 )
 
